@@ -1,0 +1,6 @@
+*.ipynb_checkpoints
+*.yml
+pegasus.properties
+wf-output
+wf-scratch
+scitech
