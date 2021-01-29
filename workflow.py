@@ -14,24 +14,30 @@ log.basicConfig(level=log.DEBUG)
 # --- Get input files ----------------------------------------------------------
 parser = ArgumentParser(description="Generates and runs lung instance segmentation workflow")
 parser.add_argument(
-    "lung_img_dir",
+    "--lung-img-dir",
+    default=Path(__file__).parent / "inputs/train_images",
     help="Path to directory containing lung images for training and validation"
 )
 parser.add_argument(
-    "lung_mask_img_dir",
+    "--lung-mask-img-dir",
+    default=Path(__file__).parent / "inputs/train_masks",
     help="Path to directory containing lung mask images for training and validation"
 )
 parser.add_argument(
-    "test_img_dir",
+    "--test-img-dir",
+    default=Path(__file__).parent / "inputs/test_images",
     help="Path to directory containing test lung images."
 )
 parser.add_argument(
     "--num-process-jobs",
     default=1,
     type=int,
-    help="Number of pre-processing jobs. Input files are divided evenly amongst"
-    "the number of pre-processing jobs. If this value exceeds the number input files"
-    "extra jobs will not be added".
+    help="""Number of pre-processing jobs. Input files are divided evenly amongst
+    the number of pre-processing jobs. If this value exceeds the number input files
+    extra jobs will not be added. If the number of input files cannot be divided evenly
+    amongs each process job, one process job will be assigned extra files to process.
+    For example, given 3 input files, and num-process-jobs=2, 2 process jobs will
+    be created where one job gets a single file and the other job gets 2 files."""
 )
 args = parser.parse_args(sys.argv[1:])
 if args.num_process_jobs < 1:
@@ -45,8 +51,6 @@ TEST_IMG_DIR = Path(args.test_img_dir)
 props = Properties()
 #props["dagman.retry"] = "100"
 props["pegasus.mode"] = "development"
-
-log.info("writing properties: {}".format(props._props))
 props.write()
 
 
@@ -127,28 +131,20 @@ wf = Workflow("lung-instance-segmentation-wf")
 # all input files to be processed
 input_files = training_input_files + test_input_files
 
-# create num-process-jobs number of jobs, where each job gets an equal number
-# of files to process (with the exception of the last job in some cases)
-num_img_per_job = len(input_files) // args.num_process_jobs
 # create at most len(input_files) number of process jobs
-if num_img_per_job < 1:
-    num_img_per_job = 1
-start = 0
-end = start + num_img_per_job
+num_process_jobs = min(args.num_process_jobs, len(input_files))
 
-log.info("assigning {} input files to each of the {} process job".format(num_img_per_job, args.num_process_jobs))
+# create the preproces jobs
+process_jobs = [Job(preprocess) for i in range(num_process_jobs)]
 
-while start < len(input_files):
-    job_in_files = input_files[start:end]
-    job_out_files = [File(f.lfn.replace(".png", "_norm.png")) for f in job_in_files]
+# evenly distribute input files to process jobs
+for i, f in enumerate(input_files):
+    curr = i % num_process_jobs
+    process_jobs[curr].add_inputs(f)
+    process_jobs[curr].add_outputs(File(f.lfn.replace(".png", "_norm.png")))
 
-    process_job = Job(preprocess)\
-                    .add_inputs(*job_in_files)\
-                    .add_outputs(*job_out_files)
-    
-    wf.add_jobs(process_job)
-
-log.info("{} process jobs generated".format(len(wf.jobs)))
+wf.add_jobs(*process_jobs)
+log.info("generated {} process jobs".format(num_process_jobs))
 
 # files to be used for training/valid (lung imgs w/mask imgs)
 processed_training_files = [File(f.lfn.replace(".png", "_norm.png")) for f in training_input_files]
@@ -181,3 +177,6 @@ wf.plan(submit=True, dir="runs")\
     .wait()\
     .analyze()\
     .statistics()
+
+
+#wf.graph(include_files=True, label="xform-id", output="/Users/ryantanaka/Desktop/wf.dot")
