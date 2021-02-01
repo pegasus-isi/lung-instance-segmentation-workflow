@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import sys
 import argparse
+from pathlib import Path
 import numpy as np 
 import tensorflow as tf
 import pandas as pd
 import joblib
 import os
-import sys
 from cv2 import imread, createCLAHE 
 import cv2
 import pickle
@@ -21,33 +22,39 @@ import ray
 from ray import tune
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description='Lung Image Segmentation Using UNet Architecture')
+    parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
+    parser.add_argument(
+                "-i",
+                "--input_dir",
+                default=os.getcwd(),
+                help="directory where input files will be read from"
+            )
+
+    parser.add_argument(
+                "-o",
+                "--output_dir",
+                default=os.getcwd(),
+                help="directory where output files will be written to"
+            )
+    
     parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 5, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 16, help = "Batch Size")
-    #parser.add_argument('-n_trials',  metavar='num_trials', type=int, default = 3, help = "Number of Trials")
-    return parser.parse_args()
 
-class TuneReporterCallback(Callback):
-    def __init__(self, logs={}):
-        self.iteration = 0
-        super(TuneReporterCallback, self).__init__()
+    return parser.parse_args(args)    
 
-    def on_epoch_end(self, batch, logs={}):
-        self.iteration += 1
-        tune.report(keras_info=logs, mean_accuracy=logs.get("accuracy"), mean_loss=logs.get("loss"))
+# UNet Architecture with DataLoader function for loading the images and masks
 
 class UNet:
     def DataLoader(self):
                 
-        infile = open(CURR_PATH+"/data_split.pkl",'rb')
+        infile = open(OUTPUT_FOLDER+"/data_split.pkl",'rb')
         new_dict = pickle.load(infile)
         infile.close()
 
-        path = CURR_PATH
+        path = OUTPUT_FOLDER
 
         train_data = new_dict['train']
-        valid_data = new_dict['valid']
-        test_data = new_dict['test']
+        valid_data = new_dict['valid']        
 
         X_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' not in i]
         y_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' in i]
@@ -55,19 +62,16 @@ class UNet:
         X_valid = [cv2.imread(os.path.join(path,i))[:,:,0] for i in valid_data if 'mask' not in i]
         y_valid = [cv2.imread(os.path.join(path,i))[:,:,0] for i in valid_data if 'mask' in i]
 
-        X_test = [cv2.imread(os.path.join(path,i))[:,:,0] for i in test_data]
-
         dim = 256
 
         X_train = np.array(X_train).reshape((len(X_train),dim,dim,1))
         y_train = np.array(y_train).reshape((len(y_train),dim,dim,1))
         X_valid = np.array(X_valid).reshape((len(X_valid),dim,dim,1))
         y_valid = np.array(y_valid).reshape((len(y_valid),dim,dim,1))
-        X_test = np.array(X_test).reshape((len(X_test),dim,dim,1))
         assert X_train.shape == y_train.shape
         assert X_valid.shape == y_valid.shape
 
-        return X_train.astype(np.float32), y_train.astype(np.float32), X_valid.astype(np.float32), y_valid.astype(np.float32), X_test.astype(np.float32)
+        return X_train.astype(np.float32), y_train.astype(np.float32), X_valid.astype(np.float32), y_valid.astype(np.float32)
     
     def model(self, input_size=(256,256,1)):
         inputs = Input(input_size)
@@ -120,6 +124,7 @@ def dice_coef_loss(y_true, y_pred):
     return -dice_coef(y_true, y_pred)
 
 
+# Hyperparameter Optimization Callback Function
 
 class TuneReporterCallback(Callback):
     def __init__(self, logs={}):
@@ -133,10 +138,10 @@ class TuneReporterCallback(Callback):
 def tune_unet(config):
     unet = UNet()
     model = unet.model()
-    checkpoint_callback = ModelCheckpoint(os.path.join(CURR_PATH, "model.h5"), monitor='loss', save_best_only=True, save_freq=2)
+    checkpoint_callback = ModelCheckpoint(os.path.join(OUTPUT_FOLDER, "model.h5"), monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
     callbacks = [checkpoint_callback, TuneReporterCallback()]
     model.compile(optimizer=Adam(lr=config["lr"]), loss=[dice_coef_loss], metrics = [dice_coef, 'binary_accuracy'])
-    train_vol, train_seg, valid_vol, valid_seg, test_vol = unet.DataLoader()
+    train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
     loss_history = model.fit(x = train_vol, y = train_seg, batch_size = BATCH_SIZE, epochs = EPOCHS, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
 
 def create_study(checkpoint_file):
@@ -148,6 +153,10 @@ def create_study(checkpoint_file):
     ray.shutdown()  
     ray.init(log_to_driver=False)
     
+    if not os.path.isfile(checkpoint_file):
+        df = pd.DataFrame(list())
+        df.to_pickle(os.path.join(OUTPUT_FOLDER, checkpoint_file))
+    
     STUDY = joblib.load("study_checkpoint.pkl")
     todo_trials = N_TRIALS - len(STUDY)
     analysis = tune.run(
@@ -156,32 +165,25 @@ def create_study(checkpoint_file):
                 config=hyperparameter_space,
                 num_samples=todo_trials)            
     df = analysis.results_df
-    df.to_pickle(checkpoint_file) 
-        
-
-def main():
+    df.to_pickle(os.path.join(OUTPUT_FOLDER, checkpoint_file)) 
     
+if __name__=="__main__":
     global EPOCHS
     global BATCH_SIZE
     global N_TRIALS
     global CURR_PATH
     global loss_history
-    N_TRIALS = 1
-    CURR_PATH = os.getcwd()
+    global N_TRIALS
     
     args = parse_args(sys.argv[1:])
+    OUTPUT_FOLDER = args.input_dir
 
     EPOCHS = args.epochs
     BATCH_SIZE = args.batch_size
-    #N_TRIALS = args.n_trials
+    N_TRIALS = 1
 
     hpo_checkpoint_file = "study_checkpoint.pkl"
 
     create_study(hpo_checkpoint_file)
-     
-
-#__name__ prints tensorflow.keras.optimizers
-
-main()
 
 
