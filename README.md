@@ -10,6 +10,7 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
 * Clone the respository using the command `git clone <repository link>`
 * `cd` into the `lung-instance-segmentation-workflow` directory
 *  [Optional] If you want to add your own docker image, go to `workflow.py` file and change the image in 
+
     ```python
     unet_wf_cont = Container(
                 "unet_wf",
@@ -17,6 +18,7 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
                 image="docker://vedularaghu/unet_wf:latest"
             )
     ``` 
+    
     part, to the link to your docker image
 * Run the workflow script using the command `python3 workflow.py`
 * Check the predicted masks, model.h5 file, and Checkpoint file in `wf-output` folder
