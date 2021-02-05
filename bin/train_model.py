@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
-import sys
-import argparse
-from pathlib import Path
-import numpy as np 
-import tensorflow as tf
-import pandas as pd
-import joblib
 import os
-from cv2 import imread, createCLAHE 
+import sys
+import ray
 import cv2
-import pickle
-from glob import glob
+import joblib
+import argparse
+import numpy as np 
+import pandas as pd
+from ray import tune
+from keras import backend as keras
+from cv2 import imread, createCLAHE 
 from tensorflow.keras.models import *
 from tensorflow.keras.layers import *
 from tensorflow.keras.optimizers import *
-from keras import backend as keras
 from tensorflow.keras.optimizers import Adam 
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, Callback
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping, ReduceLROnPlateau
-import ray
-from ray import tune
 
 def parse_args(args):
+    """
+        This function takes the command line arguments.        
+        :param args: commandline arguments
+        :return:  parsed commands
+    """
     parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
     parser.add_argument(
                 "-i",
@@ -42,19 +43,29 @@ def parse_args(args):
 
     return parser.parse_args(args)    
 
-# UNet Architecture with DataLoader function for loading the images and masks
-
 class UNet:
     def DataLoader(self):
-                
-        infile = open(OUTPUT_FOLDER+"/data_split.pkl",'rb')
-        new_dict = pickle.load(infile)
-        infile.close()
+        """
+        This function takes all the training images and masks from the current working directory and converts
+        the images into a numpy array.        
+        :return:  
+            X_train: ndarray
+                      2D array containing train images            
+            y_train: ndarray
+                      2D array containing train masks  
+            X_valid: ndarray
+                      2D array containing validation images  
+            y_valid: ndarray
+                      2D array containing validation masks  
+        """
+        # infile = open(OUTPUT_FOLDER+"/data_split.pkl",'rb')
+        # new_dict = pickle.load(infile)
+        # infile.close()
 
         path = OUTPUT_FOLDER
 
-        train_data = new_dict['train']
-        valid_data = new_dict['valid']        
+        # train_data = new_dict['train']
+        # valid_data = new_dict['valid']        
 
         X_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' not in i]
         y_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' in i]
@@ -74,6 +85,15 @@ class UNet:
         return X_train.astype(np.float32), y_train.astype(np.float32), X_valid.astype(np.float32), y_valid.astype(np.float32)
     
     def model(self, input_size=(256,256,1)):
+        """
+        This function is the U-Net architecture. It has 2 steps, contraction path (encoder) and symmetric expansion path (decoder).
+        The encoder is a traditional stack of convolution and max pooling layers. The decoder is used to enable precise localization
+        using transposed convolutions and thus is an end-to-end fully convolutional network (FCN).
+        :parameter input_size: input image ndarray size
+        :return:  
+            Model:  U-Net model
+        """
+
         inputs = Input(input_size)
         conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
         conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
@@ -115,18 +135,31 @@ class UNet:
         return Model(inputs=[inputs], outputs=[conv10])
 
 def dice_coef(y_true, y_pred):
+    """
+    This function is used to gauge the similarity of two samples. It is also called F1-score.
+    :parameter y_true: actual mask of the image
+    :parameter y_pred: predicted mask of the image
+    :return: dice_coefficient value        
+    """
     y_true_f = keras.flatten(y_true)
     y_pred_f = keras.flatten(y_pred)
     intersection = keras.sum(y_true_f * y_pred_f)
     return (2. * intersection + 1) / (keras.sum(y_true_f) + keras.sum(y_pred_f) + 1)
     
 def dice_coef_loss(y_true, y_pred):
+    """
+    This function is used to gauge the similarity of two samples. It is also called F1-score.
+    :parameter y_true: actual mask of the image
+    :parameter y_pred: predicted mask of the image
+    :return: dice_coefficient value        
+    """
     return -dice_coef(y_true, y_pred)
 
 
-# Hyperparameter Optimization Callback Function
-
 class TuneReporterCallback(Callback):
+    """
+    Tune Callback for Keras. This callback is invoked every epoch.
+    """
     def __init__(self, logs={}):
         self.iteration = 0
         super(TuneReporterCallback, self).__init__()
@@ -136,20 +169,43 @@ class TuneReporterCallback(Callback):
         tune.report(keras_info=logs, mean_accuracy=logs.get("accuracy"), mean_loss=logs.get("loss"))
 
 def tune_unet(config):
+    """
+    This function is used to train the model and call the Ray Tune callback function after every epoch for 
+    hyperparameter optimization.
+    :parameter config: hyperarameters list                
+    """
+
     unet = UNet()
     model = unet.model()
     checkpoint_callback = ModelCheckpoint(os.path.join(OUTPUT_FOLDER, "model.h5"), monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
-    callbacks = [checkpoint_callback, TuneReporterCallback()]
+
+    # Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
+    callbacks = [checkpoint_callback, TuneReporterCallback()] 
+
+    # Compile the U-Net model
     model.compile(optimizer=Adam(lr=config["lr"]), loss=[dice_coef_loss], metrics = [dice_coef, 'binary_accuracy'])
+
+    # Call DataLoader function to get train and validation dataset
     train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
-    loss_history = model.fit(x = train_vol, y = train_seg, batch_size = BATCH_SIZE, epochs = EPOCHS, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
+
+    # Train the U-Net model
+    model.fit(x = train_vol, y = train_seg, batch_size = BATCH_SIZE, epochs = EPOCHS, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
 
 def create_study(checkpoint_file):
+    """
+    This function creates study object which contains data from each epoch, with different hyperparameters, of the training.
+    :parameter checkpoint_file: File
+                            Checkpoint file conatins previous study object (if any) or an empty file where study object 
+                            is dumped
+    """   
+
+    # This seeds the hyperparameter sampling.
     np.random.seed(5)  
     hyperparameter_space = {
         "lr": tune.loguniform(0.0002, 0.2)
         }   
     
+    # Restart Ray defensively in case the ray connection is lost.
     ray.shutdown()  
     ray.init(log_to_driver=False)
     

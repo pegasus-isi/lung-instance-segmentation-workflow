@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 import sys
-import argparse
-import h5py
-import pickle
 import os
-from tensorflow.keras.models import load_model
-import numpy as np
 import cv2
-
-from pathlib import Path
+import pickle
+import argparse
+import numpy as np
+from tensorflow.keras.models import load_model
 
 def parse_args(args):
+    """
+    This function takes the command line arguments.        
+    :param args: commandline arguments
+    :return:  parsed commands
+    """
+
     parser = argparse.ArgumentParser(description="Predicting masks")
     parser.add_argument(
                 "-i",
@@ -29,27 +32,17 @@ def parse_args(args):
     return parser.parse_args(args)
 
 if __name__=="__main__":
-    args = parse_args(sys.argv[1:])
-    
-    CURR_PATH = args.input_dir
 
-    with open(CURR_PATH + "/data_split.pkl",'rb') as spf:
+    args = parse_args(sys.argv[1:])    
+
+    with open(args.input_dir + "/data_split.pkl",'rb') as spf:
             new_dict = pickle.load(spf)
-    
-    spf.close()
-
-    path = CURR_PATH
 
     test_data = new_dict['test']
-
-    X_test = [cv2.imread(os.path.join(path,i))[:,:,0] for i in test_data]
-
-    model = load_model(CURR_PATH+"/model.h5", compile=False)
-
+    X_test = [cv2.imread(os.path.join(args.input_dir,i))[:,:,0] for i in test_data]
+    model = load_model(args.input_dir+"/model.h5", compile=False)
     test_vol = np.array(X_test, dtype=np.float32)
-    
     preds = model.predict(test_vol)
-
     pred_candidates = np.random.randint(1,test_vol.shape[0],len(preds))
 
     for i in range(len(preds)):

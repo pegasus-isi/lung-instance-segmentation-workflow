@@ -5,19 +5,30 @@ import os
 import cv2
 import numpy as np
 from cv2 import imread 
-from pathlib import Path
 
 class DataPreprocessing:    
     
     @staticmethod
-    def normalize(i):
+    def normalize(input_image):
+        """
+        This function takes images as input and normalize it i.e remove noise from the data. By normalizing images, we bring
+        the image into a range of intensity values which is normal to our senses. In a normalized image, the mean is 0 and the 
+        variance is 1.        
+        :param input_image: image_file[.png]
+        :return:  image_file[.png]
+        """
         
-        im = cv2.resize(cv2.imread(os.path.join(DIR, i)),(X_shape,X_shape))[:,:,0]
+        im = cv2.resize(cv2.imread(os.path.join(DIR, input_image)),(X_shape,X_shape))[:,:,0]
         final_img = cv2.normalize(im,  norm_img, 0, 255, cv2.NORM_MINMAX)
         
         return final_img
     
 def parse_args(args):
+    """
+    This function takes the command line arguments.        
+    :param args: commandline arguments
+    :return:  parsed commands
+    """
     parser = argparse.ArgumentParser(description="Preprocess Job - Normalizes the images for faster computation")
     parser.add_argument(
                 "-i",
@@ -38,7 +49,7 @@ def parse_args(args):
 if __name__=="__main__":
     args = parse_args(sys.argv[1:])
     DIR = args.input_dir
-    X_shape = 256
+    X_shape = 256 #converting the input images to 256x256 size
     norm_img = np.zeros((800,800))
     files = os.listdir(DIR)
     images = [i for i in files if ".png" in i]
