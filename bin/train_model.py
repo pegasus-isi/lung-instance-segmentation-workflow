@@ -58,14 +58,21 @@ class UNet:
             y_valid: ndarray
                       2D array containing validation masks  
         """
-        # infile = open(OUTPUT_FOLDER+"/data_split.pkl",'rb')
-        # new_dict = pickle.load(infile)
-        # infile.close()
-
-        path = OUTPUT_FOLDER
-
-        # train_data = new_dict['train']
-        # valid_data = new_dict['valid']        
+        path = OUTPUT_FOLDER        
+        valid_data = []
+        mask_valid = []
+        files = os.listdir(path)
+        all_images = [i for i in files if ".png" in i]
+        masks = [i for i in all_images if "mask" in i]
+        images = [i.split("_mask_")[0]+"_norm.png" for i in masks]
+        for i in range(len(images)-1, int(0.7*(len(images))), -1):
+            valid_data.append(images[i])
+        for i in valid_data:
+            mask_valid.append(i.split("_norm")[0]+"_mask_norm.png")
+        for i in mask_valid:
+            valid_data.append(i)
+        images = [i for i in images if i not in valid_data]
+        masks = [i for i in masks if i not in valid_data]             
 
         X_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' not in i]
         y_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data if 'mask' in i]

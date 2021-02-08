@@ -33,16 +33,22 @@ def parse_args(args):
 
 if __name__=="__main__":
 
-    args = parse_args(sys.argv[1:])    
+    args = parse_args(sys.argv[1:])
+    
+    CURR_PATH = args.input_dir
 
-    with open(args.input_dir + "/data_split.pkl",'rb') as spf:
-            new_dict = pickle.load(spf)
+    files = os.listdir(CURR_PATH)
 
-    test_data = new_dict['test']
-    X_test = [cv2.imread(os.path.join(args.input_dir,i))[:,:,0] for i in test_data]
-    model = load_model(args.input_dir+"/model.h5", compile=False)
+    test_data = [i for i in files if ".png" in i]
+
+    X_test = [cv2.imread(os.path.join(CURR_PATH,i))[:,:,0] for i in test_data]
+
+    model = load_model(CURR_PATH+"/model.h5", compile=False)
+
     test_vol = np.array(X_test, dtype=np.float32)
+    
     preds = model.predict(test_vol)
+
     pred_candidates = np.random.randint(1,test_vol.shape[0],len(preds))
 
     for i in range(len(preds)):
