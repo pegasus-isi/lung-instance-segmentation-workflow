@@ -1,6 +1,8 @@
 # Lung-Instance-Segmentation-Workflow 
 (Instance segmentation with U-Net/Mask R-CNN workflow using Keras &amp; Ray Tune)
 
+![workflow](img/5_proc.png)
+
 ![workflow](https://raw.githubusercontent.com/pegasus-isi/lung-instance-segmentation-workflow/main/img/5_proc.png)
 
 ![workflow2](https://i.imgur.com/rVjiYyW.jpeg)
