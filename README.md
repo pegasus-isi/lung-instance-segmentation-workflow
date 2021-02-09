@@ -3,6 +3,8 @@
 
 ![workflow](https://raw.githubusercontent.com/pegasus-isi/lung-instance-segmentation-workflow/main/img/5_proc.png)
 
+![workflow2](https://i.imgur.com/rVjiYyW.jpeg)
+
 Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4256233/) for predicting lung masks from the images using [U-Net](https://arxiv.org/abs/1505.04597) model. 
 
 ## Running the Workflow
