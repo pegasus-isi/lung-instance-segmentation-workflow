@@ -62,7 +62,7 @@ tc = TransformationCatalog()
 unet_wf_cont = Container(
                 "unet_wf",
                 Container.DOCKER,
-                image="docker://vedularaghu/unet_wf:latest"
+                image="docker:///ryantanaka/lung-wf:latest"
             )
 
 tc.add_containers(unet_wf_cont)
