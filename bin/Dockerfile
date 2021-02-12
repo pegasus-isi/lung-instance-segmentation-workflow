@@ -30,6 +30,4 @@ COPY train_model.py ./
 RUN chmod 777 ./train_model.py
 COPY prediction.py ./
 RUN chmod 777 ./prediction.py
-RUN groupadd --gid 808 scitech-group
-RUN useradd --gid 808 --uid 550 --create-home --password '$6$ouJkMasm5X8E4Aye$QTFH2cHk4b8/TmzAcCxbTz7Y84xyNFs.gqm/HWEykdngmOgELums1qOi3e6r8Z.j7GEA9bObS/2pTN1WArGNf0' riyuzaki
 ENV LANG C.UTF-8
