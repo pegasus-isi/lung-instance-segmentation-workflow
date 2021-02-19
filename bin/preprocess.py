@@ -43,21 +43,31 @@ def parse_args(args):
                 default=".",
                 help="directory where output files will be written to"
             )
+    parser.add_argument(
+                "-t",
+                "--type",
+                default="train",
+                help="the type of input set stating if it is test/train/val"
+            )
 
     return parser.parse_args(args)
 
 if __name__=="__main__":
     args = parse_args(sys.argv[1:])
-    DIR = args.input_dir
+    DIR = os.path.join(args.input_dir)
+    
     X_shape = 256 #converting the input images to 256x256 size
     norm_img = np.zeros((800,800))
     files = os.listdir(DIR)
     images = [i for i in files if ".png" in i]
+    
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
     dp = DataPreprocessing()
 
     # Calling the normalize function to nomalize the images and saving them to the output directory
-    for i in images:        
+    for i in images: 
         normalized_image = dp.normalize(i)
-        cv2.imwrite(os.path.join(args.output_dir, i.split(".png")[0]+"_norm.png"), normalized_image)
+        cv2.imwrite(os.path.join(args.output_dir, args.type+'_'+i[0:-4]+"_norm.png"), normalized_image)
 

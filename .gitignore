@@ -4,3 +4,4 @@ pegasus.properties
 wf-output
 wf-scratch
 scitech
+runs/*
