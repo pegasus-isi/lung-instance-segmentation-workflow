@@ -8,6 +8,10 @@ unet = UNet()
 config = pd.read_pickle(os.path.join(unet.args.output_dir,'study_checkpoint.pkl'))
 
 model = unet.model()
+#path = os.path.join(unet.args.output_dir, "model.h5")
+#if not os.path.exists(path):
+#	with open(path, 'w') as f: pass	
+	
 checkpoint_callback = ModelCheckpoint(os.path.join(unet.args.output_dir, "model.h5"), monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
 # Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
 callbacks = [checkpoint_callback] 
@@ -16,8 +20,8 @@ callbacks = [checkpoint_callback]
 model.compile(optimizer=Adam(lr=config["lr"]), loss=[dice_coef_loss], metrics = [dice_coef, 'binary_accuracy'])
 
 # Call DataLoader function to get train and validation dataset
-train_vol, train_seg, valid_vol, valid_seg = DataLoader()
+train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
 
 # Train the U-Net model
-model.fit(x = train_vol, y = train_seg, batch_size = self.BATCH_SIZE, epochs = self.EPOCHS, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
+model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
 

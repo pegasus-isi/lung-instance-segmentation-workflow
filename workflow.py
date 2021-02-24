@@ -86,7 +86,7 @@ hpo_task = Transformation(
 train_model = Transformation( 
                 "train_model",
                 site="condorpool",
-                pfn="/usr/bin/train_model.py",
+                pfn="/usr/bin/train_m.py",
                 is_stageable=False,
                 container=unet_wf_cont
             )
@@ -106,13 +106,14 @@ tc.write()
 
 # --- Write ReplicaCatalog -----------------------------------------------------
 training_input_files = []
+mask_files = []
 # test_input_files = []
 
 rc = ReplicaCatalog()
 
 for _dir, _list in [
         (LUNG_IMG_DIR, training_input_files), 
-#         (LUNG_MASK_IMG_DIR, training_input_files), 
+         (LUNG_MASK_IMG_DIR, mask_files), 
 #         (TEST_IMG_DIR, test_input_files)
     ]:
     for f in _dir.iterdir():
@@ -120,7 +121,7 @@ for _dir, _list in [
             _list.append(File(f.name))
             rc.add_replica(site="local", lfn=f.name, pfn=f.resolve())
 
-# train job checkpoint file (empty one should be given if none exists)
+# hpo job checkpoint file (empty one should be given if none exists)
 p = Path(__file__).parent.resolve() / "study_checkpoint.pkl"
 if not p.exists():
     df = pd.DataFrame(list())
@@ -130,7 +131,7 @@ if not p.exists():
 checkpoint = File(p.name)
 rc.add_replica(site="local", lfn=checkpoint, pfn=p.resolve())
 
-log.info("writing rc with {} files collected from: {}".format(len(training_input_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
+log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
 rc.write()
 
 # --- Generate and run Workflow ------------------------------------------------
@@ -165,7 +166,6 @@ for i, f in enumerate(training_input_files):
         process_jobs[2].add_outputs(op_file)
         processed_training_files.append(op_file)
 
-
 wf.add_jobs(*process_jobs)
 log.info("generated 3 preprocess jobs")
 
@@ -179,7 +179,7 @@ log.info("generated 3 preprocess jobs")
 log.info("generating hpo job")
 study = File("study_checkpoint.pkl")
 hpo_job = Job(hpo_task)\
-                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files)\
+                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
                 .add_outputs(study)
 #                 .add_checkpoint(checkpoint)
 
@@ -189,9 +189,9 @@ wf.add_jobs(hpo_job)
 log.info("generating train_model job")
 model = File("model.h5")
 train_job = Job(train_model)\
-                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files)\
+                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
                 .add_outputs(model)\
-                .add_checkpoint(checkpoint)
+#                .add_checkpoint(model)
 
 wf.add_jobs(train_job)
 

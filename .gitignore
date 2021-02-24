@@ -5,3 +5,5 @@ wf-output
 wf-scratch
 scitech
 runs/*
+model.h5
+study_checkpoint.pkl

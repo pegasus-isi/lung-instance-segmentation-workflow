@@ -62,7 +62,7 @@ def tune_unet(config):
     train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
 
     # Train the U-Net model
-    history = model.fit(x = train_vol, y = train_seg, batch_size = unet.BATCH_SIZE, epochs = unet.EPOCHS, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
+    history = model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
 
 
 def create_study(checkpoint_file):
@@ -94,11 +94,12 @@ def create_study(checkpoint_file):
     analysis = tune.run(
                 tune_unet, 
                 verbose=1,
+		local_dir=unet.args.output_dir,
                 config=hyperparameter_space,
                 num_samples=todo_trials)            
     df = analysis.get_best_config(metric="mean_loss", mode='min')
-    f = open(path, 'wb')
-    pickle.dump(df,f) 
+    #f = open(path, 'wb')
+    #pickle.dump(df,f) 
     
 if __name__=="__main__":
     global unet

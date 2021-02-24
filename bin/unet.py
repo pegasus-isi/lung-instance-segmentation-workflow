@@ -40,6 +40,10 @@ def parse_args(args):
 class UNet:
     def __init__(self):
         self.args = parse_args(sys.argv[1:])
+	self.curr = os.getcwd()
+	OUTPUT_FOLDER=self.args.input_dir
+	
+	self.N_TRIALS = 4
 
     def DataLoader(self):
         """
