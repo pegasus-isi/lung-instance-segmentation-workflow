@@ -148,23 +148,24 @@ process_jobs = [Job(preprocess) for i in range(3)]
 processed_training_files = []
 processed_val_files = []
 processed_test_files = []
+l = len(training_input_files)
 
 for i, f in enumerate(training_input_files):
-    if i <= 70:
+    if i+1 <= 0.7*l:
         process_jobs[0].add_inputs(f)
         op_file = File("train_"+f.lfn.replace(".png", "_norm.png"))
         process_jobs[0].add_outputs(op_file)
         processed_training_files.append(op_file)
-    elif i <= 90:
+    elif i+1 <= 0.9*l:
         process_jobs[1].add_inputs(f)
         op_file = File("val_"+f.lfn.replace(".png", "_norm.png"))
         process_jobs[1].add_outputs(op_file)
-        processed_training_files.append(op_file)
+        processed_val_files.append(op_file)
     else:
         process_jobs[2].add_inputs(f)
         op_file = File("test_"+f.lfn.replace(".png", "_norm.png"))
         process_jobs[2].add_outputs(op_file)
-        processed_training_files.append(op_file)
+        processed_test_files.append(op_file)
 
 wf.add_jobs(*process_jobs)
 log.info("generated 3 preprocess jobs")
@@ -189,7 +190,7 @@ wf.add_jobs(hpo_job)
 log.info("generating train_model job")
 model = File("model.h5")
 train_job = Job(train_model)\
-                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
+                .add_inputs(study, *processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
                 .add_outputs(model)\
 #                .add_checkpoint(model)
 
@@ -206,10 +207,11 @@ wf.add_jobs(predict_job)
 
 # run workflow
 log.info("begin workflow execution")
+#wf.write()
 wf.plan(submit=True, dir="runs")\
     .wait()\
     .analyze()\
     .statistics()
 
 
-#wf.graph(include_files=True, label="xform-id", output="/Users/ryantanaka/Desktop/wf.dot")
+#wf.graph(include_files=True, label="xform-id", output="wf.dot")
