@@ -86,7 +86,7 @@ hpo_task = Transformation(
 train_model = Transformation( 
                 "train_model",
                 site="condorpool",
-                pfn="/usr/bin/train_m.py",
+                pfn="/usr/bin/train_model.py",
                 is_stageable=False,
                 container=unet_wf_cont
             )
@@ -144,7 +144,7 @@ wf = Workflow("lung-instance-segmentation-wf")
 # num_process_jobs = min(args.num_process_jobs, len(input_files))
 
 # create the preproces jobs
-process_jobs = [Job(preprocess) for i in range(3)]
+process_jobs = [Job(preprocess).add_args("--type", group) for group in ["train", "val", "test"]]
 processed_training_files = []
 processed_val_files = []
 processed_test_files = []
