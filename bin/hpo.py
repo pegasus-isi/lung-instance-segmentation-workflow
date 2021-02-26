@@ -7,28 +7,10 @@ from ray import tune
 from unet import UNet
 from keras import backend as keras
 import pickle
-
-def dice_coef(y_true, y_pred):
-    """
-    This function is used to gauge the similarity of two samples. It is also called F1-score.
-    :parameter y_true: actual mask of the image
-    :parameter y_pred: predicted mask of the image
-    :return: dice_coefficient value        
-    """
-    y_true_f = keras.flatten(y_true)
-    y_pred_f = keras.flatten(y_pred)
-    intersection = keras.sum(y_true_f * y_pred_f)
-    return (2. * intersection + 1) / (keras.sum(y_true_f) + keras.sum(y_pred_f) + 1)
-    
-def dice_coef_loss(y_true, y_pred):
-    """
-    This function is used to gauge the similarity of two samples. It is also called F1-score.
-    :parameter y_true: actual mask of the image
-    :parameter y_pred: predicted mask of the image
-    :return: dice_coefficient value        
-    """
-    return -dice_coef(y_true, y_pred)
-
+import numpy as np
+import pandas as pd
+from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.optimizers import Adam
 
 class TuneReporterCallback(Callback):
     """
@@ -49,21 +31,21 @@ def tune_unet(config):
     :parameter config: hyperarameters list                
     """
 
-    unet = UNet()
+    #unet = UNet()
     model = unet.model()
-
+    
     # Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
     callbacks = [TuneReporterCallback()] 
-
+   
     # Compile the U-Net model
-    model.compile(optimizer=Adam(lr=config["lr"]), loss=[dice_coef_loss], metrics = [dice_coef, 'binary_accuracy'])
+    model.compile(optimizer=Adam(lr=config["lr"]), loss=[unet.dice_coef_loss], metrics = [unet.dice_coef, 'binary_accuracy'])
 
     # Call DataLoader function to get train and validation dataset
     train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
 
     # Train the U-Net model
     history = model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
-
+    
 
 def create_study(checkpoint_file):
     """
@@ -89,23 +71,25 @@ def create_study(checkpoint_file):
         df.to_pickle(path)
 
     STUDY = joblib.load(path)
-    # print('STUDY', STUDY)
+	
     todo_trials = unet.N_TRIALS - len(STUDY)
     analysis = tune.run(
                 tune_unet, 
                 verbose=1,
 		local_dir=unet.args.output_dir,
                 config=hyperparameter_space,
-                num_samples=todo_trials)            
+                num_samples=todo_trials)
     df = analysis.get_best_config(metric="mean_loss", mode='min')
-    #f = open(path, 'wb')
-    #pickle.dump(df,f) 
+    f = open(path, 'wb')
+    pickle.dump(df,f) 
     
 if __name__=="__main__":
     global unet
     unet = UNet()
     
     hpo_checkpoint_file = "study_checkpoint.pkl"
+
+    model = unet.model()
 
     create_study(hpo_checkpoint_file)
     

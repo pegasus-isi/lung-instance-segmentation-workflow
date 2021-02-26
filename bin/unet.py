@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os, sys
 import cv2
 import argparse
@@ -40,10 +39,10 @@ def parse_args(args):
 class UNet:
     def __init__(self):
         self.args = parse_args(sys.argv[1:])
-	self.curr = os.getcwd()
-	OUTPUT_FOLDER=self.args.input_dir
-	
-	self.N_TRIALS = 4
+        self.curr = os.getcwd()
+        OUTPUT_FOLDER=self.args.input_dir
+        
+        self.N_TRIALS = 4
 
     def DataLoader(self):
         """
@@ -62,13 +61,13 @@ class UNet:
         path = self.args.output_dir            
         train_masks = []
         val_masks = []
-
+	
         all_files = [i for i in os.listdir(path) if ".png" in i]
-        masks = os.listdir(masks_path)
+        #masks = os.listdir(masks_path)
 
         train_data = [i for i in all_files if "train_" in i]
         val_data = [i for i in all_files if "val_" in i]
-        masks_data = [i for i in masks if "masks" in i]
+        masks_data = [i for i in all_files if "mask" in i]
         
         for img in train_data:
           fname = img[6:-9]
@@ -87,18 +86,17 @@ class UNet:
               break  
 
         
-        # print('Images --- ', train_data)
-        # print('Val-- ',val_data)
-        # print('t Masks--', train_masks)
-        # print('v Masks--', val_masks)   
+        #print('Images --- ', train_data)
+        #print('Val-- ',val_data)
+        #print('t Masks--', train_masks)
+        #print('v Masks--', val_masks)   
 
-        dim = 256   
+        dim = 256
+        X_train = [cv2.imread(os.path.join(path,i))[:,:,0] for i in train_data]
+        y_train = [cv2.resize(cv2.imread(os.path.join(path,i)),(dim, dim))[:,:,0] for i in train_masks]
 
-        X_train = [cv2.imread(os.path.join(train_path,i))[:,:,0] for i in train_data]
-        y_train = [cv2.resize(cv2.imread(os.path.join(masks_path,i)),(dim, dim))[:,:,0] for i in train_masks]
-
-        X_valid = [cv2.imread(os.path.join(val_path,i))[:,:,0] for i in val_data]
-        y_valid = [cv2.resize(cv2.imread(os.path.join(masks_path,i)), (dim, dim))[:,:,0] for i in val_masks]
+        X_valid = [cv2.imread(os.path.join(path,i))[:,:,0] for i in val_data]
+        y_valid = [cv2.resize(cv2.imread(os.path.join(path,i)), (dim, dim))[:,:,0] for i in val_masks]
 
         X_train = np.array(X_train).reshape((len(X_train),dim,dim,1))
         y_train = np.array(y_train).reshape((len(y_train),dim,dim,1))
@@ -106,7 +104,6 @@ class UNet:
         y_valid = np.array(y_valid).reshape((len(y_valid),dim,dim,1))
         assert X_train.shape == y_train.shape
         assert X_valid.shape == y_valid.shape
-
 
         return X_train.astype(np.float32), y_train.astype(np.float32), X_valid.astype(np.float32), y_valid.astype(np.float32)
     
@@ -159,3 +156,24 @@ class UNet:
         conv10 = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
 
         return Model(inputs=[inputs], outputs=[conv10])
+
+    def dice_coef(self, y_true, y_pred):
+        """
+        This function is used to gauge the similarity of two samples. It is also called F1-score.
+        :parameter y_true: actual mask of the image
+        :parameter y_pred: predicted mask of the image
+        :return: dice_coefficient value        
+        """
+        y_true_f = keras.flatten(y_true)
+        y_pred_f = keras.flatten(y_pred)
+        intersection = keras.sum(y_true_f * y_pred_f)
+        return (2. * intersection + 1) / (keras.sum(y_true_f) + keras.sum(y_pred_f) + 1)
+    
+    def dice_coef_loss(self, y_true, y_pred):
+        """
+        This function is used to gauge the similarity of two samples. It is also called F1-score.
+        :parameter y_true: actual mask of the image
+        :parameter y_pred: predicted mask of the image
+        :return: dice_coefficient value        
+        """
+        return -self.dice_coef(y_true, y_pred)

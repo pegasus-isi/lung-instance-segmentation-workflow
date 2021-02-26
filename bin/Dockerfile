@@ -28,6 +28,8 @@ COPY preprocess.py ./
 RUN chmod 777 ./preprocess.py
 COPY hpo.py ./
 RUN chmod 777 ./hpo.py
+COPY unet.py ./
+RUN chmod 777 ./unet.py
 COPY train_model.py ./
 RUN chmod 777 ./train_model.py
 COPY prediction.py ./

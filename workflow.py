@@ -62,7 +62,7 @@ tc = TransformationCatalog()
 unet_wf_cont = Container(
                 "unet_wf",
                 Container.DOCKER,
-                image="docker:///ryantanaka/lung-wf:latest"
+                image="docker:///aditi1208/lung-segmentation:latest"
             )
 
 tc.add_containers(unet_wf_cont)
@@ -74,7 +74,15 @@ preprocess = Transformation(
                 is_stageable=False,
                 container=unet_wf_cont
             )
-
+'''
+unet_class = Transformation(
+		"unet"
+		site="condorpool"
+		pfn="/usr/bin/unet.py",
+		is_stageable=False,
+		container=unet_wf_cont
+	)
+'''
 hpo_task = Transformation( 
                 "hpo",
                 site="condorpool",
