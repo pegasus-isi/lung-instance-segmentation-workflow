@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 import pandas as pd
+import json
 
 from Pegasus.api import *
 
@@ -135,9 +136,16 @@ if not p.exists():
     df = pd.DataFrame(list())
     df.to_pickle(p.name)
 
-
 checkpoint = File(p.name)
 rc.add_replica(site="local", lfn=checkpoint, pfn=p.resolve())
+
+p = Path(__file__).parent.resolve() / "study_results.txt"
+if not p.exists():
+    with open(p, 'w') as f:
+        f.write(json.dumps({}))
+
+study_results = File(p.name)
+rc.add_replica(site="local", lfn=study_results, pfn=p.resolve())
 
 log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
 rc.write()
@@ -187,10 +195,11 @@ log.info("generated 3 preprocess jobs")
 #creating hpo job
 log.info("generating hpo job")
 study = File("study_checkpoint.pkl")
+study_result = File("study_results.txt")
 hpo_job = Job(hpo_task)\
                 .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
-                .add_outputs(study)
-#                 .add_checkpoint(checkpoint)
+                .add_outputs(study, study_result)\
+#		.add_checkpoint(study)
 
 wf.add_jobs(hpo_job)
 
@@ -198,7 +207,7 @@ wf.add_jobs(hpo_job)
 log.info("generating train_model job")
 model = File("model.h5")
 train_job = Job(train_model)\
-                .add_inputs(study, *processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
+                .add_inputs(study_result, *processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
                 .add_outputs(model)\
 #                .add_checkpoint(model)
 

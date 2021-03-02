@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+#FROM ubuntu:18.04
+FROM opensciencegrid/tensorflow-gpu:2.3-cuda-10.1
 WORKDIR /usr/bin
 RUN apt-get update && \
     apt-get install -y software-properties-common && \

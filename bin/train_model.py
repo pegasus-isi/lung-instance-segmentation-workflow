@@ -4,10 +4,12 @@ import pandas as pd
 from unet import UNet
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.optimizers import Adam
+import json
 
 unet = UNet()
-
-config = pd.read_pickle(os.path.join(unet.args.output_dir,'study_checkpoint.pkl'))
+config = {}
+with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
+	config = json.load(f)
 
 model = unet.model()
 	

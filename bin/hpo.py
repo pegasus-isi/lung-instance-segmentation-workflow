@@ -6,7 +6,7 @@ import argparse
 from ray import tune
 from unet import UNet
 from keras import backend as keras
-import pickle
+import json
 import numpy as np
 import pandas as pd
 from tensorflow.keras.callbacks import Callback
@@ -47,7 +47,7 @@ def tune_unet(config):
     history = model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
     
 
-def create_study(checkpoint_file):
+def create_study(checkpoint_file, hpo_results):
     """
     This function creates study object which contains data from each epoch, with different hyperparameters, of the training.
     :parameter checkpoint_file: File
@@ -66,6 +66,8 @@ def create_study(checkpoint_file):
     ray.init(log_to_driver=False)
     
     path = os.path.join(unet.args.output_dir, checkpoint_file)
+    result_path = os.path.join(unet.args.output_dir, hpo_results)
+
     if not os.path.isfile(path):
         df = pd.DataFrame(list())
         df.to_pickle(path)
@@ -79,21 +81,25 @@ def create_study(checkpoint_file):
 		local_dir=unet.args.output_dir,
                 config=hyperparameter_space,
                 num_samples=todo_trials)
-    df = analysis.get_best_config(metric="mean_loss", mode='min')
-    f = open(path, 'wb')
-    pickle.dump(df,f) 
+    df = analysis.results_df
+    df.to_pickle(path)
+    with open(result_path, 'w') as res:
+        df = analysis.get_best_config(metric="mean_loss", mode='min')
+        res.write(json.dumps(df))
+    #pickle.dump(df,f) 
     
 if __name__=="__main__":
     global unet
     unet = UNet()
     
     hpo_checkpoint_file = "study_checkpoint.pkl"
-
+    hpo_results = "study_results.txt"
     model = unet.model()
 
-    create_study(hpo_checkpoint_file)
+    create_study(hpo_checkpoint_file, hpo_results)
     
 #     plt.plot(config["config.lr"], config["keras_info.val_binary_accuracy"])
 #     plt.xlabel('Learning rate')
 #     plt.ylabel('Val Accuracy')
 #     plt.show()
+
