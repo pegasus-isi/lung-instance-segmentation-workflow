@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import cv2
 import os, sys
 import ray
@@ -78,6 +80,7 @@ def create_study(checkpoint_file, hpo_results):
     analysis = tune.run(
                 tune_unet, 
                 verbose=1,
+                resources_per_trial={"gpu": 1},
 		local_dir=unet.args.output_dir,
                 config=hyperparameter_space,
                 num_samples=todo_trials)
