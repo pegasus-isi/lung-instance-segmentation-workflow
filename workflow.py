@@ -63,7 +63,8 @@ tc = TransformationCatalog()
 unet_wf_cont = Container(
                 "unet_wf",
                 Container.DOCKER,
-                image="docker:///aditi1208/lung-segmentation:latest"
+                image="docker:///ryantanaka/lung-wf:latest",
+                arguments="--runtime=nvidia --shm-size=15gb"
             )
 
 tc.add_containers(unet_wf_cont)
@@ -75,15 +76,7 @@ preprocess = Transformation(
                 is_stageable=False,
                 container=unet_wf_cont
             )
-'''
-unet_class = Transformation(
-		"unet"
-		site="condorpool"
-		pfn="/usr/bin/unet.py",
-		is_stageable=False,
-		container=unet_wf_cont
-	)
-'''
+
 hpo_task = Transformation( 
                 "hpo",
                 site="condorpool",
@@ -138,14 +131,6 @@ if not p.exists():
 
 checkpoint = File(p.name)
 rc.add_replica(site="local", lfn=checkpoint, pfn=p.resolve())
-
-p = Path(__file__).parent.resolve() / "study_results.txt"
-if not p.exists():
-    with open(p, 'w') as f:
-        f.write(json.dumps({}))
-
-study_results = File(p.name)
-rc.add_replica(site="local", lfn=study_results, pfn=p.resolve())
 
 log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
 rc.write()
@@ -225,7 +210,7 @@ wf.add_jobs(predict_job)
 # run workflow
 log.info("begin workflow execution")
 #wf.write()
-wf.plan(submit=True, dir="runs")\
+wf.plan(submit=True, dir="runs", verbose=3)\
     .wait()\
     .analyze()\
     .statistics()
