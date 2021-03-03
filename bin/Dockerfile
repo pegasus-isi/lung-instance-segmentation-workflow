@@ -1,4 +1,3 @@
-#FROM ubuntu:18.04
 FROM opensciencegrid/tensorflow-gpu:2.3-cuda-10.1
 WORKDIR /usr/bin
 RUN apt-get update && \
@@ -14,7 +13,6 @@ RUN apt update && \
 RUN pip3 install --upgrade pip setuptools
 RUN pip3 install \
     scikit-learn \
-    tensorflow==2.2.0 \
     h5py \
     numpy==1.18.4 \
     pandas \
