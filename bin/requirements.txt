@@ -8,3 +8,4 @@ scikit-learn
 ray
 ray[tune]
 ray[rllib]
+matplotlib

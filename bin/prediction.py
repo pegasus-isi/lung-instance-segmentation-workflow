@@ -27,7 +27,7 @@ if __name__=="__main__":
 
     for i in range(len(preds)):
         img = np.squeeze(preds[i])
-        cv2.imwrite(os.path.join(unet.args.output_dir, str(test_data[i].split('.png')[0]+'_mask.png')), img)    
+        cv2.imwrite(os.path.join(unet.args.output_dir,'pred_'+ str(test_data[i].split('.png')[0][5:]+'_mask.png')), img)    
     
 
 

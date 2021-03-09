@@ -32,8 +32,9 @@ def parse_args(args):
             )
     
     parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 5, help = "Number of training epochs")
-    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 16, help = "Batch Size")
-
+    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 2, help = "Batch Size")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 4, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 4, help = "Analysis graph's size y")
     return parser.parse_args(args)   
 
 class UNet:

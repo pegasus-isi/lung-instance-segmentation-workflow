@@ -63,7 +63,7 @@ tc = TransformationCatalog()
 unet_wf_cont = Container(
                 "unet_wf",
                 Container.DOCKER,
-                image="docker:///ryantanaka/lung-wf:latest",
+                image="docker:///aditi1208/lung-segmentation:latest",
                 arguments="--runtime=nvidia --shm-size=15gb"
             )
 

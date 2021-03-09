@@ -7,3 +7,5 @@ scitech
 runs/*
 model.h5
 study_checkpoint.pkl
+study_results.txt
+Analysis.pdf

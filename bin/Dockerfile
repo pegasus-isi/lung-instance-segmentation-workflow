@@ -22,7 +22,8 @@ RUN pip3 install \
     ray[tune] \
     ray[rllib] \
     dataclasses \
-    tabulate
+    tabulate  \
+    matplotlib
 COPY preprocess.py ./
 RUN chmod 777 ./preprocess.py
 COPY hpo.py ./
