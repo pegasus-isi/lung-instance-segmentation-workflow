@@ -33,8 +33,10 @@ def parse_args(args):
     
     parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 5, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 2, help = "Batch Size")
-    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 4, help = "Analysis graph's size x")
-    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 4, help = "Analysis graph's size y")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
+    parser.add_argument('--subplotx',  metavar='subplotx', type=int, default = 3, help = "Analysis graph's subplot no of rows")
+    parser.add_argument('--subploty',  metavar='subploty', type=int, default = 1, help = "Analysis graph's subplot no of columns")
     return parser.parse_args(args)   
 
 class UNet:
@@ -59,7 +61,7 @@ class UNet:
             y_valid: ndarray
                       2D array containing validation masks  
         """
-        path = self.args.output_dir            
+        path = self.curr            
         train_masks = []
         val_masks = []
 	
@@ -178,3 +180,5 @@ class UNet:
         :return: dice_coefficient value        
         """
         return -self.dice_coef(y_true, y_pred)
+
+

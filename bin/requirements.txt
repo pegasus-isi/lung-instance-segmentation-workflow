@@ -9,3 +9,4 @@ ray
 ray[tune]
 ray[rllib]
 matplotlib
+reportlab

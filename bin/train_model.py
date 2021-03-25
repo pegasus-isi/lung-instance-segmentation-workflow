@@ -13,14 +13,22 @@ config = {}
 with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
 	config = json.load(f)
 
+
+# define signal handler 
+def SIGTERM_handler(signum, frame):
+    print("got SIGTERM")
+    os.replace("model_tmp.h5", "model.h5")
+
+signal.signal(signal.SIGTERM, SIGTERM_handler)
+
 model = unet.model()
 	
-checkpoint_callback = ModelCheckpoint(os.path.join(unet.args.output_dir, "model.h5"), monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
+checkpoint_callback = ModelCheckpoint(os.path.join(unet.args.output_dir, "model_tmp.h5"), monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
 # Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
 callbacks = [checkpoint_callback] 
 
 # Compile the U-Net model
-model.compile(optimizer=Adam(lr=config["lr"]), loss=[unet.dice_coef_loss], metrics = [unet.dice_coef, 'binary_accuracy'])
+model.compile(optimizer=Adam(lr=config['lr']), loss=[unet.dice_coef_loss], metrics = [unet.dice_coef, 'binary_accuracy'])
 
 # Call DataLoader function to get train and validation dataset
 train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
@@ -37,31 +45,34 @@ with PdfPages('Analysis.pdf') as pdf:
 
   #summarize history for binary accuracy
   plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
+  plt.subplot(unet.args.subplotx, unet.args.subploty, 1)
   plt.plot(history.history['binary_accuracy'])
   plt.plot(history.history['val_binary_accuracy'])
   plt.title('Binary Accuracy')
-  plt.ylabel('accuracy')
-  plt.xlabel('epoch')
+#  plt.ylabel('accuracy')
+#  plt.xlabel('epoch')
   plt.legend(['train', 'val'], loc='upper left')
-  pdf.savefig()
+#  pdf.savefig()
 
   # summarize history for loss
-  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
+  plt.subplot(unet.args.subplotx, unet.args.subploty, 2)
+#  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
   plt.plot(history.history['loss'])
   plt.plot(history.history['val_loss'])
   plt.title('Loss')
-  plt.ylabel('loss')
-  plt.xlabel('epoch')
+#  plt.ylabel('loss')
+#  plt.xlabel('epoch')
   plt.legend(['train', 'val'], loc='upper left')
-  pdf.savefig()
+#  pdf.savefig()
 
   #summarize dice coefficient
-  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
+  plt.subplot(unet.args.subplotx, unet.args.subploty, 3)
+#  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
   plt.plot(history.history['dice_coef'])
   plt.plot(history.history['val_dice_coef'])
   plt.title('Dice coefficient')
-  plt.ylabel('dice coefficient')
-  plt.xlabel('epoch')
+#  plt.ylabel('dice coefficient')
+#  plt.xlabel('epoch')
   plt.legend(['train', 'val'], loc='upper left')
   pdf.savefig()
 

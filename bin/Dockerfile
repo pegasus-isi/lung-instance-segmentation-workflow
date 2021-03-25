@@ -23,7 +23,8 @@ RUN pip3 install \
     ray[rllib] \
     dataclasses \
     tabulate  \
-    matplotlib
+    matplotlib \
+    reportlab
 COPY preprocess.py ./
 RUN chmod 777 ./preprocess.py
 COPY hpo.py ./

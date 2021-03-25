@@ -178,13 +178,17 @@ log.info("generated 3 preprocess jobs")
 # processed_test_files = [File(f.lfn.replace(".png", "_norm.png")) for f in test_input_files]
 
 #creating hpo job
+
 log.info("generating hpo job")
 study = File("study_checkpoint.pkl")
 study_result = File("study_results.txt")
+study_tmp = File("study_checkpoint_tmp.pkl")
+study_result_tmp = File("study_results_tmp.txt")
 hpo_job = Job(hpo_task)\
                 .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
-                .add_outputs(study, study_result)\
-#		.add_checkpoint(study)
+                .add_outputs(study_tmp, study_result_tmp)\
+		.add_checkpoint(study, study_result)\
+                .add_profiles(Namespace.DAGMAN, key="retry", value=3)
 
 wf.add_jobs(hpo_job)
 
@@ -192,7 +196,7 @@ wf.add_jobs(hpo_job)
 log.info("generating train_model job")
 model = File("model.h5")
 train_job = Job(train_model)\
-                .add_inputs(study_result, *processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
+                .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
                 .add_outputs(model)\
 #                .add_checkpoint(model)
 
