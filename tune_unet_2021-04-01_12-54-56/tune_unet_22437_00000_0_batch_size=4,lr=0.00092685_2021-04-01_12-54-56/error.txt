@@ -1,0 +1,39 @@
+Failure # 1 (occurred at 2021-04-01_12-55-02)
+Traceback (most recent call last):
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/trial_runner.py", line 586, in _process_trial
+    results = self.trial_executor.fetch_result(trial)
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/ray_trial_executor.py", line 609, in fetch_result
+    result = ray.get(trial_future[0], timeout=DEFAULT_GET_TIMEOUT)
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/_private/client_mode_hook.py", line 47, in wrapper
+    return func(*args, **kwargs)
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/worker.py", line 1456, in get
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(TuneError): [36mray::ImplicitFunc.train_buffered()[39m (pid=1770126, ip=128.9.128.142)
+  File "python/ray/_raylet.pyx", line 480, in ray._raylet.execute_task
+  File "python/ray/_raylet.pyx", line 432, in ray._raylet.execute_task.function_executor
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/trainable.py", line 167, in train_buffered
+    result = self.train()
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/trainable.py", line 226, in train
+    result = self.step()
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/function_runner.py", line 366, in step
+    self._report_thread_runner_error(block=True)
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/function_runner.py", line 513, in _report_thread_runner_error
+    ("Trial raised an exception. Traceback:\n{}".format(err_tb_str)
+ray.tune.error.TuneError: Trial raised an exception. Traceback:
+[36mray::ImplicitFunc.train_buffered()[39m (pid=1770126, ip=128.9.128.142)
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/function_runner.py", line 248, in run
+    self._entrypoint()
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/function_runner.py", line 316, in entrypoint
+    self._status_reporter.get_checkpoint())
+  File "/local-work/aditi/venv/lib/python3.6/site-packages/ray/tune/function_runner.py", line 576, in _trainable_func
+    output = fn()
+  File "bin/hpo.py", line 56, in tune_unet
+    history = model.fit(x = train_vol, y = train_seg, batch_size = config["batch_size"], epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
+  File "/local-work/aditi/venv/lib64/python3.6/site-packages/tensorflow/python/keras/engine/training.py", line 1145, in fit
+    callbacks.on_epoch_end(epoch, epoch_logs)
+  File "/local-work/aditi/venv/lib64/python3.6/site-packages/tensorflow/python/keras/callbacks.py", line 432, in on_epoch_end
+    callback.on_epoch_end(epoch, numpy_logs)
+  File "bin/hpo.py", line 34, in on_epoch_end
+    "batch_size": self.model.batch_size,
+AttributeError: 'Functional' object has no attribute 'batch_size'
+

@@ -186,19 +186,20 @@ study_tmp = File("study_checkpoint_tmp.pkl")
 study_result_tmp = File("study_results_tmp.txt")
 hpo_job = Job(hpo_task)\
                 .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
-                .add_outputs(study_tmp, study_result_tmp)\
-		.add_checkpoint(study, study_result)\
+                .add_outputs(study, study_result)\
+		.add_checkpoint(study_tmp, study_result_tmp)\
                 .add_profiles(Namespace.DAGMAN, key="retry", value=3)
 
 wf.add_jobs(hpo_job)
 
 # create training job
 log.info("generating train_model job")
+model_tmp = File("model_tmp.h5")
 model = File("model.h5")
 train_job = Job(train_model)\
                 .add_inputs(*processed_training_files, *processed_val_files, *processed_test_files, *mask_files)\
-                .add_outputs(model)\
-#                .add_checkpoint(model)
+                .add_outputs(model_tmp)\
+                .add_checkpoint(model)
 
 wf.add_jobs(train_job)
 
