@@ -35,4 +35,6 @@ COPY train_model.py ./
 RUN chmod 777 ./train_model.py
 COPY prediction.py ./
 RUN chmod 777 ./prediction.py
+COPY evaluate.py ./
+RUN chmod 777 ./evaluate.py
 ENV LANG C.UTF-8

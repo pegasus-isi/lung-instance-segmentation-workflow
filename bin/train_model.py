@@ -8,6 +8,7 @@ import json
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import signal
+import shutil
 
 unet = UNet()
 config = {}
@@ -26,6 +27,7 @@ model = unet.model()
 
 w_path = os.path.join(unet.args.output_dir, "model_tmp.h5")
 path = os.path.join(unet.args.output_dir, "model.h5")
+model_copy = os.path.join(unet.args.output_dir, "model_copy.h5")
 checkpoint_callback = ModelCheckpoint(w_path, monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
 # Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
 callbacks = [checkpoint_callback] 
@@ -39,10 +41,11 @@ train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
 # Train the U-Net model
 history = model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
 
-pdf_w_path = os.path.join(unet.args.output_dir, 'Analysis_tmp.pdf')
+
+# pdf_w_path = os.path.join(unet.args.output_dir, 'Analysis_tmp.pdf')
 pdf_path = os.path.join(unet.args.output_dir, 'Analysis.pdf')
 #Store plots in pdf
-with PdfPages(pdf_w_path) as pdf:
+with PdfPages(pdf_path) as pdf:
   firstPage = plt.figure(figsize=(unet.args.fig_sizex, unet.args.fig_sizey))
   text = "Model Analysis"
   firstPage.text(0.5, 0.5, text, size=24, ha="center")
@@ -82,4 +85,5 @@ with PdfPages(pdf_w_path) as pdf:
   pdf.savefig()
    
   os.replace(w_path, path)
-  os.replace(pdf_w_path, pdf_path)
+  shutil.copyfile(path, model_copy)
+  # os.replace(pdf_w_path, pdf_path)

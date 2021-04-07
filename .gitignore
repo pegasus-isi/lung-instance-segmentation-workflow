@@ -8,4 +8,6 @@ runs/*
 model.h5
 study_checkpoint.pkl
 study_results.txt
+*.png
 *.pdf
+bin/buildpush.sh

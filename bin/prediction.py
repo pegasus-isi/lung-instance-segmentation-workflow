@@ -20,7 +20,7 @@ if __name__=="__main__":
     X_test = [cv2.imread(os.path.join(CURR_PATH,i))[:,:,0] for i in test_data]
     X_test = np.array(X_test).reshape((len(X_test),dim,dim,1)).astype(np.float32)
 
-    model = load_model(os.path.join(CURR_PATH,"model.h5"), compile=False)
+    model = load_model(os.path.join(CURR_PATH,"model_copy.h5"), compile=False)
     preds = model.predict(X_test)
 
     #pred_candidates = np.random.randint(1, X_test.shape[0], len(preds))
