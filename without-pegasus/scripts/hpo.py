@@ -119,8 +119,10 @@ def create_study(checkpoint_file, checkpoint_tmp, hpo_results):
 if __name__=="__main__":
     global unet
     unet = UNet()
+
+    # train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
     
-    # hpo_checkpoint = "study_checkpoint.pkl"
+    hpo_checkpoint = "study_checkpoint.pkl"
     hpo_checkpoint = "hpo_trials"
     hpo_checkpoint_tmp = "hpo_trials_tmp.tar.gz"
     hpo_results = "study_results.txt"

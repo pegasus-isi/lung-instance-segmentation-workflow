@@ -10,7 +10,7 @@ from unet import UNet
 
 if __name__=="__main__":
     unet = UNet()
-    CURR_PATH = unet.args.input_dir
+    CURR_PATH = os.path.join(".", "data/test_processed")
 
     files = os.listdir(CURR_PATH)
 

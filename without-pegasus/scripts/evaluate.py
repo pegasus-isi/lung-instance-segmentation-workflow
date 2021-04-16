@@ -14,8 +14,12 @@ unet = UNet()
 model = unet.model()
 
 path = unet.args.output_dir
+train_path = os.path.join(unet.args.input_dir, "data/train")
+actual_mask_path = os.path.join(unet.args.input_dir, "data/lung-masks")
 
-all_files = [i for i in os.listdir(path) if ".png" in i]
+all_files = []
+for p in [path, actual_mask_path, train_path]:
+  all_files.extend([i for i in os.listdir(p) if ".png" in i])
 
 predicted_mask_images = []
 all_masks = []
@@ -45,7 +49,7 @@ dim = 256
 
 predicted_masks = [cv2.imread(os.path.join(path,i))[:,:,0] for i in predicted_mask_images]
 predicted_masks = np.array(predicted_masks).reshape((len(predicted_masks),dim,dim,1)).astype(np.float32)
-actual_masks = [cv2.resize(cv2.imread(os.path.join(path,i)),(dim, dim))[:,:,0] for i in actual_mask_images]
+actual_masks = [cv2.resize(cv2.imread(os.path.join(actual_mask_path,i)),(dim, dim))[:,:,0] for i in actual_mask_images]
 actual_masks = np.array(actual_masks).reshape((len(actual_masks),dim,dim,1)).astype(np.float32)
 
 num_classes = 1
@@ -61,7 +65,7 @@ mask_sum = np.sum(np.abs(actual_masks), axis=axes) + np.sum(np.abs(predicted_mas
 smooth = 0.001
 dice = 2 * (intersection + smooth)/(mask_sum + smooth)
 dice = np.mean(dice)
-print('Accuracy = ', dice, 'Interestion', intersection)
+print('Dice coefficient = ', dice)
 
 
 canvas = Canvas("EvaluationAnalysis.pdf")
@@ -79,21 +83,21 @@ orig_y = y
 
 canvas.drawString(x-inch*0.1, inch*5, "Raw Images")
 for i in orig_images[0:3]:
-  canvas.drawImage(i, x, y, inch, inch)
+  canvas.drawImage(os.path.join(train_path, i), x, y, inch, inch)
   y = y+y_inc
 
 y = orig_y
 x = x+x_inc
 canvas.drawString(x-inch*0.1, inch*5, "Actual Masks")
 for i in actual_mask_images[0:3]:
-  canvas.drawImage(i, x, y, inch, inch)
+  canvas.drawImage(os.path.join(actual_mask_path, i), x, y, inch, inch)
   y = y+y_inc
 
 y = orig_y
 x = x+x_inc
 canvas.drawString(x-inch*0.1, inch*5, "Predicted Masks")
 for i in predicted_mask_images[0:3]:
-  canvas.drawImage(i, x, y, inch, inch)
+  canvas.drawImage(os.path.join(path, i), x, y, inch, inch)
   y = y+y_inc
 
 canvas.save()
