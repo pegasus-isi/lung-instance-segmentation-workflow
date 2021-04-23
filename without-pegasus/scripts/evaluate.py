@@ -68,7 +68,7 @@ dice = np.mean(dice)
 print('Dice coefficient = ', dice)
 
 
-canvas = Canvas("EvaluationAnalysis.pdf")
+canvas = Canvas(os.path.join(unet.args.output_dir, "EvaluationAnalysis.pdf"))
 canvas.setFont("Times-Roman", 20)
 canvas.drawString(inch*3,inch*11, "Evaluation Analysis")
 canvas.setFont("Times-Roman", 12)
