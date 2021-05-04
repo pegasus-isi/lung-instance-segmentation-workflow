@@ -62,7 +62,7 @@ def tune_unet(trial, direction="minimize"):
             y = train_seg, 
             batch_size = unet.args.batch_size, 
             epochs = unet.args.epochs,
-            callbacks=callbacks,
+            # callbacks=callbacks,
             validation_data =(valid_vol, valid_seg))
     loss = history.history["loss"]
 

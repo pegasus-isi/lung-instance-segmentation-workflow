@@ -2,88 +2,74 @@
 import os
 import pandas as pd
 from unet import UNet
-from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint
+from keras.optimizers import Adam
 import json
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import signal
 import shutil
+import tensorflow as tf
+from keras import backend as keras
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib.units import inch, cm
+import numpy as np
+import cv2
+import segmentation_models as sm
+from segmentation_models import get_preprocessing
+from segmentation_models.metrics import iou_score
+from utils import GeneratePDF
 
-unet = UNet()
-config = {}
-with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
-	config = json.load(f)
 
-
-# define signal handler 
+print('Version ###############33', tf.__version__)
 def SIGTERM_handler(signum, frame):
     print("got SIGTERM")
     os.replace("model_tmp.h5", "model.h5")
 
 signal.signal(signal.SIGTERM, SIGTERM_handler)
 
-model = unet.model()
 
-w_path = os.path.join(unet.args.output_dir, "model_tmp.h5")
-path = os.path.join(unet.args.output_dir, "model.h5")
-model_copy = os.path.join(unet.args.output_dir, "model_copy.h5")
-checkpoint_callback = ModelCheckpoint(w_path, monitor='loss', save_best_only=True, save_weights_only=False, save_freq=2)
-# Enable Tune to make intermediate decisions by using a Tune Callback hook. This is Keras specific.
-callbacks = [checkpoint_callback] 
+if __name__ == "__main__":
 
-# Compile the U-Net model
-model.compile(optimizer=Adam(lr=config['lr']), loss=[unet.dice_coef_loss], metrics = [unet.dice_coef, 'binary_accuracy'])
+  unet = UNet()
+  config = {}
+  with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
+    config = eval(f.read())['params']
+    print('REading for config ', config)
 
-# Call DataLoader function to get train and validation dataset
-train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
+  BACKBONE = 'seresnet34'
+  preprocess_input = get_preprocessing(BACKBONE)
+  model = sm.Unet(BACKBONE, input_shape=(256,256,3), 
+  encoder_weights='imagenet', decoder_block_type='transpose')
 
-# Train the U-Net model
-history = model.fit(x = train_vol, y = train_seg, batch_size = unet.args.batch_size, epochs = unet.args.epochs, validation_data =(valid_vol, valid_seg), callbacks = callbacks)
+  w_path = os.path.join(unet.args.output_dir, "model_tmp.h5")
+  path = os.path.join(unet.args.output_dir, "model.h5")
+  model_copy = os.path.join(unet.args.output_dir, "model_copy.h5")
 
+  checkpoint_callback = ModelCheckpoint(w_path, monitor='loss', mode="min", save_best_only=True)
+  callbacks = [checkpoint_callback] 
 
-# pdf_w_path = os.path.join(unet.args.output_dir, 'Analysis_tmp.pdf')
-pdf_path = os.path.join(unet.args.output_dir, 'Analysis.pdf')
-#Store plots in pdf
-with PdfPages(pdf_path) as pdf:
-  firstPage = plt.figure(figsize=(unet.args.fig_sizex, unet.args.fig_sizey))
-  text = "Model Analysis"
-  firstPage.text(0.5, 0.5, text, size=24, ha="center")
-  pdf.savefig()
+  # Compile the U-Net model
+  model.compile(optimizer=Adam(lr=config['lr']), loss=unet.dice_coef_loss, metrics = [iou_score, 'accuracy'])
 
-  #summarize history for binary accuracy
-  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
-  plt.subplot(unet.args.subplotx, unet.args.subploty, 1)
-  plt.plot(history.history['binary_accuracy'])
-  plt.plot(history.history['val_binary_accuracy'])
-  plt.title('Binary Accuracy')
-#  plt.ylabel('accuracy')
-#  plt.xlabel('epoch')
-  plt.legend(['train', 'val'], loc='upper left')
-#  pdf.savefig()
+  # Call DataLoader function to get train and validation dataset
+  train_vol, train_seg, valid_vol, valid_seg = unet.DataLoader()
 
-  # summarize history for loss
-  plt.subplot(unet.args.subplotx, unet.args.subploty, 2)
-#  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
-  plt.plot(history.history['loss'])
-  plt.plot(history.history['val_loss'])
-  plt.title('Loss')
-#  plt.ylabel('loss')
-#  plt.xlabel('epoch')
-  plt.legend(['train', 'val'], loc='upper left')
-#  pdf.savefig()
+  # Train the U-Net model
+  history = model.fit(
+              x = train_vol, 
+              y = train_seg, 
+              batch_size = unet.args.batch_size, 
+              epochs = unet.args.epochs,
+              callbacks=callbacks,
+              validation_data =(valid_vol, valid_seg))
 
-  #summarize dice coefficient
-  plt.subplot(unet.args.subplotx, unet.args.subploty, 3)
-#  plt.figure(figsize = (unet.args.fig_sizex, unet.args.fig_sizey))
-  plt.plot(history.history['dice_coef'])
-  plt.plot(history.history['val_dice_coef'])
-  plt.title('Dice coefficient')
-#  plt.ylabel('dice coefficient')
-#  plt.xlabel('epoch')
-  plt.legend(['train', 'val'], loc='upper left')
-  pdf.savefig()
-   
+  # model.save(w_path)
+
+  pdf_path = os.path.join(unet.args.output_dir, 'Analysis.pdf')
+
+  #generate analysis results
+  pdf = GeneratePDF()
+  pdf.create(unet, pdf_path, history)   
   os.replace(w_path, path)
   shutil.copyfile(path, model_copy)
-  # os.replace(pdf_w_path, pdf_path)

@@ -13,24 +13,27 @@ RUN apt update && \
 RUN pip3 install --upgrade pip setuptools
 RUN pip3 install \
     scikit-learn \
+    tensorflow==2.1.0\
     h5py \
     numpy==1.18.4 \
     pandas \
     opencv-python \
     keras==2.3.1 \
-    ray \
-    ray[tune] \
-    ray[rllib] \
+    optuna \
+    segmentation_models\
     dataclasses \
     tabulate  \
     matplotlib \
-    reportlab
+    reportlab  \
+    joblib
 COPY preprocess.py ./
 RUN chmod 777 ./preprocess.py
 COPY hpo.py ./
 RUN chmod 777 ./hpo.py
 COPY unet.py ./
 RUN chmod 777 ./unet.py
+COPY utils.py ./
+RUN chmod 777 ./utils.py
 COPY train_model.py ./
 RUN chmod 777 ./train_model.py
 COPY prediction.py ./
