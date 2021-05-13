@@ -9,15 +9,60 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import inch, cm
+import argparse
+import sys
+
+def parse_args(args):
+    """
+        This function takes the command line arguments.        
+        :param args: commandline arguments
+        :return:  parsed commands
+    """
+    parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
+    parser.add_argument(
+                "-i",
+                "--input_dir",
+                default=os.getcwd(),
+                help="directory where input files will be read from"
+            )
+
+    parser.add_argument(
+                "-o",
+                "--output_dir",
+                default=os.getcwd(),
+                help="directory where output files will be written to"
+            )
+    
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 20, help = "Number of training epochs")
+    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
+    parser.add_argument('--subplotx',  metavar='subplotx', type=int, default = 3, help = "Analysis graph's subplot no of rows")
+    parser.add_argument('--subploty',  metavar='subploty', type=int, default = 1, help = "Analysis graph's subplot no of columns")
+    return parser.parse_args(args) 
 
 
-if __name__=="__main__":
-  unet = UNet()
+def row(canvas, x, y, y_inc, title, arr):
+  canvas.drawString(x-inch*0.1, inch*5, "Raw Images")
+  for i in arr:
+    canvas.drawImage(os.path.join(unet.args.output_dir,i), x, y, inch, inch)
+    y = y+y_inc
 
-  path = unet.args.output_dir
+def draw_table(canvas, orig_images, actual_mask_images, masks_pred):
+  y_inc = inch*1.25
+  x_inc = inch*2.5
+  x = inch*0.8
+  y = inch*.25
+  orig_y = y
 
-  all_files = [i for i in os.listdir(path) if ".png" in i]
+  row(canvas, x, y, y_inc, "Raw Images", orig_images)
+  x, y = x+x_inc, orig_y
+  row(canvas, x, y, y_inc, "Actual Masks", actual_mask_images)
+  x, y = x+x_inc, orig_y
+  row(canvas, x, y, y_inc, "Predicted Masks", masks_pred)
+  canvas.save()
 
+def get_images(all_files):
   predicted_mask_images = []
   all_masks = []
   actual_mask_images = []
@@ -49,14 +94,24 @@ if __name__=="__main__":
             break
       if found: break
 
+  return orig_images, actual_mask_images, masks_pred
+
+if __name__=="__main__":
   dim = 256
+  num_classes = 1
+  global unet
+
+  unet = UNet(parse_args(sys.argv[1:]))
+  path = unet.args.output_dir
+
+  all_files = [i for i in os.listdir(path) if ".png" in i]
+
+  orig_images, actual_mask_images, masks_pred = get_images(all_files)
 
   predicted_masks = [cv2.imread(os.path.join(path,i), 1) for i in masks_pred]
   predicted_masks = np.array(predicted_masks).reshape((len(predicted_masks),dim,dim, 3)).astype(np.float32)
   actual_masks = [cv2.resize(cv2.imread(os.path.join(path,i), 1),(dim, dim)) for i in actual_mask_images]
   actual_masks = np.array(actual_masks).reshape((len(actual_masks),dim,dim,3)).astype(np.float32)
-
-  num_classes = 1
 
   num_classes = predicted_masks.shape[-1]
   predicted_masks = np.array([ np.argmax(predicted_masks, axis=-1)==i for i in range(num_classes) ]).transpose(1,2,3,0)
@@ -69,7 +124,6 @@ if __name__=="__main__":
   smooth = 0.001
   dice = 2 * (intersection + smooth)/(mask_sum + smooth)
   dice = np.mean(dice)
-  print('Accuracy = ', dice, 'Interestion', intersection)
 
 
   canvas = Canvas(os.path.join(unet.args.output_dir, "EvaluationAnalysis.pdf"))
@@ -77,31 +131,4 @@ if __name__=="__main__":
   canvas.drawString(inch*3,inch*11, "Evaluation Analysis")
   canvas.setFont("Times-Roman", 12)
   canvas.drawString(inch*3,inch*10, "Dice coefficient ="+ str(dice))
-  # canvas.drawString(inch*3,inch*9, "Intersection = "+str(intersection))
-
-  y_inc = inch*1.25
-  x_inc = inch*2.5
-  x = inch*0.8
-  y = inch*.25
-  orig_y = y
-
-  canvas.drawString(x-inch*0.1, inch*5, "Raw Images")
-  for i in orig_images[0:3]:
-    canvas.drawImage(os.path.join(unet.args.output_dir,i), x, y, inch, inch)
-    y = y+y_inc
-
-  y = orig_y
-  x = x+x_inc
-  canvas.drawString(x-inch*0.1, inch*5, "Actual Masks")
-  for i in actual_mask_images[0:3]:
-    canvas.drawImage(os.path.join(unet.args.output_dir,i), x, y, inch, inch)
-    y = y+y_inc
-
-  y = orig_y
-  x = x+x_inc
-  canvas.drawString(x-inch*0.1, inch*5, "Predicted Masks")
-  for i in masks_pred[0:3]:
-    canvas.drawImage(os.path.join(unet.args.output_dir,i), x, y, inch, inch)
-    y = y+y_inc
-
-  canvas.save()
+  draw_table(canvas, orig_images, actual_mask_images, masks_pred)

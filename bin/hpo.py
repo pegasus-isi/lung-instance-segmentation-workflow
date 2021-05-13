@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+#Time = 29035
 import cv2
 import os, sys
 #import joblib
@@ -18,6 +18,37 @@ import segmentation_models as sm
 import optuna
 from segmentation_models.metrics import iou_score
 import joblib
+
+
+def parse_args(args):
+    """
+        This function takes the command line arguments.        
+        :param args: commandline arguments
+        :return:  parsed commands
+    """
+    parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
+    parser.add_argument(
+                "-i",
+                "--input_dir",
+                default=os.getcwd(),
+                help="directory where input files will be read from"
+            )
+
+    parser.add_argument(
+                "-o",
+                "--output_dir",
+                default=os.getcwd(),
+                help="directory where output files will be written to"
+            )
+    
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
+    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
+    parser.add_argument('--subplotx',  metavar='subplotx', type=int, default = 3, help = "Analysis graph's subplot no of rows")
+    parser.add_argument('--subploty',  metavar='subploty', type=int, default = 1, help = "Analysis graph's subplot no of columns")
+    return parser.parse_args(args)  
+
         
 
 def get_best_params(best, filename, root):
@@ -40,7 +71,7 @@ def tune_unet(trial, direction="minimize"):
     :parameter config: hyperarameters list                
     """
 
-    lr = trial.suggest_categorical("lr", [1e-2, 1e-3, 1e-1, 3e-5, 0.012961042001467773])
+    lr = trial.suggest_categorical("lr", [1e-2, 1e-3, 1e-5, 3e-5, 1e-7, 2e-3])
     model = sm.Unet('resnet34', input_shape=(256,256,3), encoder_weights='imagenet')
 
     early_stopping = EarlyStopping( monitor='loss', min_delta=0, patience=4)
@@ -62,7 +93,7 @@ def tune_unet(trial, direction="minimize"):
             validation_data =(valid_vol, valid_seg))
     loss = history.history["loss"]
 
-    return sum(loss)/len(loss)
+    return abs(sum(loss)/len(loss))
 
 
 def hpo_monitor(study, trial):
@@ -70,6 +101,10 @@ def hpo_monitor(study, trial):
     Save optuna hpo study
     """
     joblib.dump(study, os.path.join(unet.args.output_dir, "study_checkpoint_tmp.pkl"))
+    os.rename(
+        os.path.join(unet.args.output_dir, "study_checkpoint_tmp.pkl"), 
+        os.path.join(unet.args.output_dir, "study_checkpoint.pkl")
+    )
 
 
 
@@ -79,13 +114,7 @@ def create_study(abs_folder_path, write_path, result_path):
     :parameter checkpoint_file: File
                             Checkpoint file contains previous study object (if any) or an empty file where study object 
                             is dumped
-    """
-    # This seeds the hyperparameter sampling.
-
-    # if not os.path.exists(abs_folder_path):
-    #     df = pd.DataFrame(list())
-    #     df.to_pickle(abs_folder_path)
-            
+    """           
 
     try:
         STUDY = joblib.load(abs_folder_path)
@@ -104,15 +133,9 @@ def create_study(abs_folder_path, write_path, result_path):
         get_best_params(best_trial, result_path, unet.args.output_dir)
 
 
-def SIGTERM_handler(signum, frame):
-    print("got SIGTERM")
-    os.rename("study_checkpoint_tmp.pkl", "study_checkpoint.pkl")
-
-signal.signal(signal.SIGTERM, SIGTERM_handler) 
-
 if __name__=="__main__":
     global unet
-    unet = UNet()
+    unet = UNet(parse_args(sys.argv[1:]))
     unet.DataLoader()
 
     hpo_checkpoint = os.path.join(unet.args.output_dir, "study_checkpoint.pkl")
@@ -120,7 +143,4 @@ if __name__=="__main__":
     hpo_results = "study_results.txt"
     
     create_study(hpo_checkpoint, hpo_checkpoint_tmp, hpo_results)
-    try:
-        os.rename(hpo_checkpoint_tmp, hpo_checkpoint)
-    except FileNotFoundError:
-        pass
+

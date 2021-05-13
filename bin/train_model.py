@@ -19,23 +19,44 @@ import segmentation_models as sm
 from segmentation_models import get_preprocessing
 from segmentation_models.metrics import iou_score
 from utils import GeneratePDF
+from tensorflow.keras.callbacks import Callback, EarlyStopping
+import argparse, sys
 
+def parse_args(args):
+    """
+        This function takes the command line arguments.        
+        :param args: commandline arguments
+        :return:  parsed commands
+    """
+    parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
+    parser.add_argument(
+                "-i",
+                "--input_dir",
+                default=os.getcwd(),
+                help="directory where input files will be read from"
+            )
 
-print('Version ###############33', tf.__version__)
-def SIGTERM_handler(signum, frame):
-    print("got SIGTERM")
-    os.replace("model_tmp.h5", "model.h5")
-
-signal.signal(signal.SIGTERM, SIGTERM_handler)
+    parser.add_argument(
+                "-o",
+                "--output_dir",
+                default=os.getcwd(),
+                help="directory where output files will be written to"
+            )
+    
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 40, help = "Number of training epochs")
+    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
+    parser.add_argument('--subplotx',  metavar='subplotx', type=int, default = 3, help = "Analysis graph's subplot no of rows")
+    parser.add_argument('--subploty',  metavar='subploty', type=int, default = 1, help = "Analysis graph's subplot no of columns")
+    return parser.parse_args(args) 
 
 
 if __name__ == "__main__":
-
-  unet = UNet()
+  unet = UNet(parse_args(sys.argv[1:]))
   config = {}
   with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
     config = eval(f.read())['params']
-    print('REading for config ', config)
 
   BACKBONE = 'seresnet34'
   preprocess_input = get_preprocessing(BACKBONE)

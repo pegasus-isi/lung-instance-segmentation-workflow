@@ -26,18 +26,4 @@ RUN pip3 install \
     matplotlib \
     reportlab  \
     joblib
-COPY preprocess.py ./
-RUN chmod 777 ./preprocess.py
-COPY hpo.py ./
-RUN chmod 777 ./hpo.py
-COPY unet.py ./
-RUN chmod 777 ./unet.py
-COPY utils.py ./
-RUN chmod 777 ./utils.py
-COPY train_model.py ./
-RUN chmod 777 ./train_model.py
-COPY prediction.py ./
-RUN chmod 777 ./prediction.py
-COPY evaluate.py ./
-RUN chmod 777 ./evaluate.py
 ENV LANG C.UTF-8

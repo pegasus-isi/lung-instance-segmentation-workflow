@@ -8,9 +8,40 @@ import numpy as np
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 from unet import UNet
+import argparse
+
+
+def parse_args(args):
+    """
+        This function takes the command line arguments.        
+        :param args: commandline arguments
+        :return:  parsed commands
+    """
+    parser = argparse.ArgumentParser(description="Lung Image Segmentation Using UNet Architecture")
+    parser.add_argument(
+                "-i",
+                "--input_dir",
+                default=os.getcwd(),
+                help="directory where input files will be read from"
+            )
+
+    parser.add_argument(
+                "-o",
+                "--output_dir",
+                default=os.getcwd(),
+                help="directory where output files will be written to"
+            )
+    
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 20, help = "Number of training epochs")
+    parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
+    parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
+    parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
+    parser.add_argument('--subplotx',  metavar='subplotx', type=int, default = 3, help = "Analysis graph's subplot no of rows")
+    parser.add_argument('--subploty',  metavar='subploty', type=int, default = 1, help = "Analysis graph's subplot no of columns")
+    return parser.parse_args(args)  
 
 if __name__=="__main__":
-    unet = UNet()
+    unet = UNet(parse_args(sys.argv[1:]))
     CURR_PATH = unet.args.output_dir
     
     files = os.listdir(CURR_PATH)
@@ -37,6 +68,4 @@ if __name__=="__main__":
         masked_img[masked_img>0.5] = 255
         masked_img[masked_img<0.5] = 0
         masked_img=cv2.resize(masked_img,(width,height)).astype(np.float32)
-        # print('Writing to ','pred_'+ str(test_data[i].split('.png')[0][5:]+'_mask.png') )
         cv2.imwrite(os.path.join(CURR_PATH,'pred_'+ str(test_data[i].split('.png')[0][5:]+'_mask.png')), masked_img)   
-        # cv2.imwrite(os.path.join(CURR_PATH,'test_mask.png'), masked_img)   
