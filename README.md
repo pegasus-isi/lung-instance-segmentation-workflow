@@ -1,7 +1,9 @@
 # Lung-Instance-Segmentation-Workflow 
 (Instance segmentation with U-Net/Mask R-CNN workflow using Keras &amp; Ray Tune)
 
-![workflow](img/workflow.png)
+![workflow](img/graph.png)
+
+![workflow-outline](img/workflow.jpg)
 
 Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4256233/) for predicting lung masks from the images using [U-Net](https://arxiv.org/abs/1505.04597) model. 
 
@@ -28,7 +30,8 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
 * Clone the respository using the command `git clone <repository link>`
 * `cd` into the `lung-instance-segmentation-workflow/bin` directory
 * Use the command `pip3 -r requirements.txt` to install the required packages
-* Use the command `python3 <filename>` command to run the `preprocess.py`, `train_model.py`, and `prediction.py` files
+* Go back to the `lung-instance-segmentation-workflow` directory and ensure that you have a directory called `output` here
+* Execute the `end-to-end.sh` script. 
 
 ## Contributing to the project
 

@@ -20,12 +20,12 @@ IGNORE_IMAGES = ['CHNCXR_0025_0.png', 'CHNCXR_0036_0.png', 'CHNCXR_0037_0.png', 
 parser = ArgumentParser(description="Generates and runs lung instance segmentation workflow")
 parser.add_argument(
     "--lung-img-dir",
-    default=Path(__file__).parent / "img/lung-images",
+    default=Path(__file__).parent / "inputs/train_images", #"img/lung-images",
     help="Path to directory containing lung images for training and validation"
 )
 parser.add_argument(
     "--lung-mask-img-dir",
-    default=Path(__file__).parent / "img/lung-masks",
+    default=Path(__file__).parent / "inputs/train_masks", #"img/lung-masks",
     help="Path to directory containing lung mask images for training and validation"
 )
 
@@ -205,7 +205,7 @@ def run_workflow():
     hpo_job = Job(hpo_task)\
                     .add_inputs(*processed_training_files, *processed_val_files, *mask_files, unet_file)\
                     .add_outputs(study_result)\
-                    .add_checkpoint(hpo_checkpoint_result)
+                    .add_checkpoint(hpo_checkpoint_result)\
                     .add_profiles(Namespace.DAGMAN, key="retry", value=1000)\
                     .add_profiles(Namespace.PEGASUS, key="checkpoint.time", value=10)\
                     .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=11)
@@ -246,6 +246,9 @@ def run_workflow():
         .wait()\
         .analyze()\
         .statistics()
+
+    
+    wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
 
 
 if __name__ == "__main__":
