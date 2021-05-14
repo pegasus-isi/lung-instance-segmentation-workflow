@@ -95,9 +95,6 @@ def run_workflow():
                     site="local",
                     pfn=top_dir / "bin/preprocess.py",
                     is_stageable=True,
-                    # site="condorpool",
-                    # pfn="/usr/bin/preprocess.py",
-                    # is_stageable=False,
                     container=unet_wf_cont
                 )
 
@@ -106,9 +103,6 @@ def run_workflow():
                     site="local",
                     pfn=top_dir / "bin/unet.py",
                     is_stageable=True,
-                    # site="condorpool",
-                    # pfn="/usr/bin/preprocess.py",
-                    # is_stageable=False,
                     container=unet_wf_cont
                 )
     utils = Transformation(
@@ -116,17 +110,11 @@ def run_workflow():
                     site="local",
                     pfn=top_dir / "bin/utils.py",
                     is_stageable=True,
-                    # site="condorpool",
-                    # pfn="/usr/bin/preprocess.py",
-                    # is_stageable=False,
                     container=unet_wf_cont
                 )
 
     hpo_task = Transformation( 
                     "hpo",
-                    # site="condorpool",
-                    # pfn="/usr/bin/hpo.py",
-                    # is_stageable=False,
                     site="local",
                     pfn=top_dir / "bin/hpo.py",
                     is_stageable=True,
@@ -136,9 +124,6 @@ def run_workflow():
 
     train_model = Transformation( 
                     "train_model",
-                    # site="condorpool",
-                    # pfn="/usr/bin/train_model.py",
-                    # is_stageable=False,
                     site="local",
                     pfn=top_dir / "bin/train_model.py",
                     is_stageable=True,
@@ -149,9 +134,6 @@ def run_workflow():
 
     predict_masks = Transformation( 
                     "predict_masks",
-                    # site="condorpool",
-                    # pfn="/usr/bin/prediction.py",
-                    # is_stageable=False,
                     site="local",
                     pfn=top_dir / "bin/prediction.py",
                     is_stageable=True,
@@ -161,9 +143,6 @@ def run_workflow():
 
     evaluate_model = Transformation( 
                     "evaluate",
-                    # site="condorpool",
-                    # pfn="/usr/bin/evaluate.py",
-                    # is_stageable=False,
                     site="local",
                     pfn=top_dir / "bin/evaluate.py",
                     is_stageable=True,
@@ -193,14 +172,14 @@ def run_workflow():
                 rc.add_replica(site="local", lfn=f.name, pfn=f.resolve())
 
     #checkpoint files  and results (empty one should be given if none exists) 
-    for fname in ["study_checkpoint.pkl", "model.h5"]:
+    for fname in ["study_checkpoint.pkl", "model.h5", "bin/unet.py", "bin/utils.py"]:
         p = Path(__file__).parent.resolve() / fname
         if not p.exists():
             with open(p, "w") as dummyFile:
                 dummyFile.write("")
 
         replicaFile = File(p.name)
-        rc.add_replica(site="local", lfn=replicaFile, pfn=p.resolve())
+        rc.add_replica(site="local", lfn=replicaFile, pfn=p)
 
     log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
     rc.write()
@@ -222,11 +201,14 @@ def run_workflow():
     log.info("generating hpo job")
     hpo_checkpoint_result = File("study_checkpoint.pkl")
     study_result = File("study_results.txt")
+    unet_file = File("unet.py")
     hpo_job = Job(hpo_task)\
-                    .add_inputs(*processed_training_files, *processed_val_files, *mask_files)\
+                    .add_inputs(*processed_training_files, *processed_val_files, *mask_files, unet_file)\
                     .add_outputs(study_result)\
-                    .add_checkpoint(hpo_checkpoint_result)\
-                    .add_profiles(Namespace.DAGMAN, key="retry", value=3)
+                    .add_checkpoint(hpo_checkpoint_result)
+                    .add_profiles(Namespace.DAGMAN, key="retry", value=1000)\
+                    .add_profiles(Namespace.PEGASUS, key="checkpoint.time", value=10)\
+                    .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=11)
 
     wf.add_jobs(hpo_job)
 
@@ -234,8 +216,9 @@ def run_workflow():
     log.info("generating train_model job")
     model = File("model.h5")
     model_copy = File("model_copy.h5")
+    utils_file = File("utils.py")
     train_job = Job(train_model)\
-                    .add_inputs(study_result, *processed_training_files, *processed_val_files, *mask_files)\
+                    .add_inputs(study_result, *processed_training_files, *processed_val_files, *mask_files, unet_file, utils_file)\
                     .add_checkpoint(model)\
                     .add_outputs(model_copy)
 
@@ -245,14 +228,14 @@ def run_workflow():
     log.info("generating prediction job; using {} test lung images".format(len(processed_test_files)))
     predicted_masks = [File("pred_"+f.lfn.replace(".png", "_mask.png")[5:]) for f in processed_test_files]
     predict_job = Job(predict_masks)\
-                    .add_inputs(model_copy, *processed_test_files)\
+                    .add_inputs(model_copy, *processed_test_files, unet_file)\
                     .add_outputs(*predicted_masks)
 
     wf.add_jobs(predict_job)
 
     #create evalute job
     evaluate_job = Job(evaluate_model)\
-                    .add_inputs(*processed_training_files, *processed_test_files, *predicted_masks, *mask_files)\
+                    .add_inputs(*processed_training_files, *processed_test_files, *predicted_masks, *mask_files, unet_file)\
                     # .add_outputs(pdf_analysis)
 
     wf.add_jobs(evaluate_job)

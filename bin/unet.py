@@ -51,6 +51,7 @@ class UNet:
               found = True
               train_masks.append(m)
               break
+          if not found: print('Not found ', fname)
                 
         for img in val_data:
           fname = img[4:-9]
