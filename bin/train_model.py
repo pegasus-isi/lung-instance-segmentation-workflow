@@ -68,7 +68,8 @@ if __name__ == "__main__":
   model_copy = os.path.join(unet.args.output_dir, "model_copy.h5")
 
   checkpoint_callback = ModelCheckpoint(w_path, monitor='loss', mode="min", save_best_only=True)
-  callbacks = [checkpoint_callback] 
+  early_stopping = EarlyStopping( monitor='loss', min_delta=0, patience=4)
+  callbacks = [checkpoint_callback, early_stopping] 
 
   # Compile the U-Net model
   model.compile(optimizer=Adam(lr=config['lr']), loss=unet.dice_coef_loss, metrics = [iou_score, 'accuracy'])

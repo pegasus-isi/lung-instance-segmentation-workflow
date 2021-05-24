@@ -31,10 +31,5 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
 * `cd` into the `lung-instance-segmentation-workflow/bin` directory
 * Use the command `pip3 -r requirements.txt` to install the required packages
 * Go back to the `lung-instance-segmentation-workflow` directory and ensure that you have a directory called `output` here
-* Execute the `end-to-end.sh` script. 
-
-## Contributing to the project
-
-* Fork the repository and create a branch using `git checkout -b <branchname>` command
-* Add your contributions to this branch and create a Pull Request to this repository. 
-
+* Download the dataset by running the python script called "get-dataset.py" by `python get-datatset.py`
+* Execute the `end-to-end.sh` script

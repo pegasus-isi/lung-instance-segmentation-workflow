@@ -1,14 +1,16 @@
-python bin/preprocess.py -t train -c t -i img/lung-images/ -o test-op/ -m img/lung-masks/
+python bin/preprocess.py -t train -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
 wait $!
-python bin/preprocess.py -t val -c t -i img/lung-images/ -o test-op/ -m img/lung-masks/
+python bin/preprocess.py -t val -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
 wait $!
-python bin/preprocess.py -t test -c t -i img/lung-images/ -o test-op/ -m img/lung-masks/
+python bin/preprocess.py -t test -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
 wait $!
-python bin/hpo.py -i test-op -o test-op
+cp "data/Lung Segmentation/masks/"* output
 wait $!
-python bin/train_model.py -i test-op -o test-op
+python bin/hpo.py -i output -o output
 wait $!
-python bin/prediction.py -i test-op -o test-op
+python bin/train_model.py -i output -o output
 wait $!
-python bin/evaluate.py -i test-op -o test-op
+python bin/prediction.py -i output -o output
+wait $!
+python bin/evaluate.py -i output -o output
 wait $!

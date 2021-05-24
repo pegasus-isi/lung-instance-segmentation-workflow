@@ -143,4 +143,3 @@ if __name__=="__main__":
     hpo_results = "study_results.txt"
     
     create_study(hpo_checkpoint, hpo_checkpoint_tmp, hpo_results)
-

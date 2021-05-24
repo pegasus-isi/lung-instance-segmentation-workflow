@@ -247,7 +247,6 @@ def run_workflow():
         .analyze()\
         .statistics()
 
-    
     wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
 
 
