@@ -1,10 +1,10 @@
-python bin/preprocess.py -t train -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
+python bin/preprocess.py -t train -c t -i "data/LungSegmentation/CXR_png" -o output -m "data/LungSegmentation/masks"
 wait $!
-python bin/preprocess.py -t val -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
+python bin/preprocess.py -t val -c t -i "data/LungSegmentation/CXR_png" -o output -m "data/LungSegmentation/masks"
 wait $!
-python bin/preprocess.py -t test -c t -i "data/Lung Segmentation/CXR_png" -o output -m "data/Lung Segmentation/masks"
+python bin/preprocess.py -t test -c t -i "data/LungSegmentation/CXR_png" -o output -m "data/LungSegmentation/masks"
 wait $!
-cp "data/Lung Segmentation/masks/"* output
+cp "data/LungSegmentation/masks/"* output
 wait $!
 python bin/hpo.py -i output -o output
 wait $!

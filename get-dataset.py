@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import os
+import kaggle
+import shutil
+
 os.environ['KAGGLE_USERNAME'] = "your_username"
 os.environ['KAGGLE_KEY'] = "your_key"
 
-import kaggle
 kaggle.api.dataset_download_files('nikhilpandey360/chest-xray-masks-and-labels/download', path='.', unzip=True)
 
-import shutil
+os.rename("data/Lung Segmentation", "data/LungSegmentation")
 
 DIR = "data/Lung Segmentation/masks"
 all_masks = os.listdir(DIR)
