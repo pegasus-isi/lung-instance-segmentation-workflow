@@ -20,12 +20,12 @@ IGNORE_IMAGES = ['CHNCXR_0025_0.png', 'CHNCXR_0036_0.png', 'CHNCXR_0037_0.png', 
 parser = ArgumentParser(description="Generates and runs lung instance segmentation workflow")
 parser.add_argument(
     "--lung-img-dir",
-    default=Path(__file__).parent / "img/lung-images",
+    default=Path(__file__).parent / "data/LungSegmentation/CXR_png",
     help="Path to directory containing lung images for training and validation"
 )
 parser.add_argument(
     "--lung-mask-img-dir",
-    default=Path(__file__).parent / "img/lung-masks",
+    default=Path(__file__).parent / "data/LungSegmentation/masks",
     help="Path to directory containing lung mask images for training and validation"
 )
 
