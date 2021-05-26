@@ -76,10 +76,9 @@ def get_images(all_files):
         predicted_mask_images.append(i)
       else:
         all_masks.append(i)
-    elif c > 0:
+    elif c > 0 and "test" in i:
       orig_images.append(i)
       c = c-1
-
   for oig in orig_images:
     orig_name = oig[5:-9]
     for img in predicted_mask_images:
@@ -90,6 +89,7 @@ def get_images(all_files):
         for m in all_masks:
           mname = m[0:-9]
           if fname == mname:
+            found = True
             actual_mask_images.append(m)
             break
       if found: break
@@ -108,6 +108,7 @@ if __name__=="__main__":
 
   orig_images, actual_mask_images, masks_pred = get_images(all_files)
 
+  print(' Images', orig_images, actual_mask_images, masks_pred)
   predicted_masks = [cv2.imread(os.path.join(path,i), 1) for i in masks_pred]
   predicted_masks = np.array(predicted_masks).reshape((len(predicted_masks),dim,dim, 3)).astype(np.float32)
   actual_masks = [cv2.resize(cv2.imread(os.path.join(path,i), 1),(dim, dim)) for i in actual_mask_images]
