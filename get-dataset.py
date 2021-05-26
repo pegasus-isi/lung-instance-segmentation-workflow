@@ -10,7 +10,7 @@ kaggle.api.dataset_download_files('nikhilpandey360/chest-xray-masks-and-labels/d
 
 os.rename("data/Lung Segmentation", "data/LungSegmentation")
 
-DIR = "data/Lung Segmentation/masks"
+DIR = "data/LungSegmentation/masks"
 all_masks = os.listdir(DIR)
 for m in all_masks:
     if "mask" not in m:
