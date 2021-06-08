@@ -106,7 +106,7 @@ def create_site_catalog():
         cores=1,
         runtime=300
     )\
-    .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="jaditi/.ssh/bosco_key.rsa")\
+    .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
     # .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")
 
     sc.add_sites(local, donut)
