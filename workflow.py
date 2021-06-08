@@ -28,6 +28,14 @@ parser.add_argument(
     default=Path(__file__).parent / "data/LungSegmentation/masks",
     help="Path to directory containing lung mask images for training and validation"
 )
+parser.add_argument(
+    "--donut",
+    action='store_true',
+    help="Flag to run the workflow on donut cluster"
+)
+
+
+top_dir = Path(__file__).parent.resolve()
 
 def train_test_val_split(preprocess, training_input_files, mask_files, 
         processed_training_files, processed_val_files, processed_test_files):
@@ -65,7 +73,46 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
     mask_files.extend(augmented_masks)
     return process_jobs
 
-def run_workflow():
+def create_site_catalog():
+    sc = SiteCatalog()
+
+    shared_scratch_dir = os.path.join(top_dir, "scratch")
+    local_storage_dir = os.path.join(top_dir, "output")
+
+    local = Site("local")\
+    .add_directories(
+        Directory(Directory.SHARED_SCRATCH, shared_scratch_dir)
+            .add_file_servers(FileServer("file://" + shared_scratch_dir, Operation.ALL)),
+        Directory(Directory.LOCAL_STORAGE, local_storage_dir)
+            .add_file_servers(FileServer("file://" + local_storage_dir, Operation.ALL))
+    )
+
+    donut = Site("donut")\
+    .add_grids(
+        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="jaditi@donut-submit01", job_type=SupportedJobs.COMPUTE),
+        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="jaditi@donut-submit01", job_type=SupportedJobs.AUXILLARY)
+    )\
+    .add_directories(
+        Directory(Directory.SHARED_SCRATCH, "/nas/home/jaditi/pegasus/scratch")
+            .add_file_servers(FileServer("scp://jaditi@donut-submit01/nas/home/jaditi/pegasus/scratch", Operation.ALL)),
+        Directory(Directory.SHARED_STORAGE, "/nas/home/jaditi/pegasus/storage")
+            .add_file_servers(FileServer("scp://jaditi@donut-submit01/nas/home/jaditi/pegasus/storage", Operation.ALL))
+    )\
+    .add_pegasus_profile(
+        style="ssh",
+        data_configuration="sharedfs",
+        change_dir="true",
+        queue="donut-default",
+        cores=1,
+        runtime=300
+    )\
+    .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="jaditi/.ssh/bosco_key.rsa")\
+    # .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")
+
+    sc.add_sites(local, donut)
+    return sc
+
+def run_workflow(args):
 
     # --- Write Properties ---------------------------------------------------------
     props = Properties()
@@ -87,8 +134,6 @@ def run_workflow():
                 )
 
     tc.add_containers(unet_wf_cont)
-
-    top_dir = Path(__file__).parent.resolve()
 
     preprocess = Transformation(
                     "preprocess",
@@ -154,6 +199,11 @@ def run_workflow():
 
     log.info("writing tc with transformations: {}, containers: {}".format([k for k in tc.transformations], [k for k in tc.containers]))
     tc.write()
+
+    if args.donut:
+        print('Reached here')
+        sc = create_site_catalog()
+        sc.write()
 
     # --- Write ReplicaCatalog -----------------------------------------------------
     training_input_files = []
@@ -240,6 +290,7 @@ def run_workflow():
 
     wf.add_jobs(evaluate_job)
 
+
     # run workflow
     log.info("begin workflow execution")
     wf.plan(submit=True, dir="runs", verbose=3)\
@@ -257,4 +308,4 @@ if __name__ == "__main__":
 
     LUNG_IMG_DIR = Path(args.lung_img_dir)
     LUNG_MASK_IMG_DIR = Path(args.lung_mask_img_dir)
-    run_workflow()
+    run_workflow(args)

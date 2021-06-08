@@ -10,3 +10,4 @@ joblib
 matplotlib
 reportlab
 segmentation_models
+kaggle
