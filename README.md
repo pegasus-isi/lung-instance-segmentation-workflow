@@ -9,27 +9,18 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
 
 ## Running the Workflow
 
-* Clone the respository using the command `git clone <repository link>`
-* `cd` into the `lung-instance-segmentation-workflow` directory
-*  [Optional] If you want to add your own docker image, go to `workflow.py` file and change the image in 
+1. Clone the repo: `git clone https://github.com/pegasus-isi/lung-instance-segmentation-workflow.git`
+2. Run using the sample dataset: `python3 workflow.py --lung-img-dir inputs/train_images --lung-mask-img-dir inputs/train_masks`
 
-    ```python
-    unet_wf_cont = Container(
-                "unet_wf",
-                Container.DOCKER,
-                image="docker:///aditi1208/lung-segmentation:latest"
-            )
-    ``` 
-    
-    part, to the link to your docker image
-* Run the workflow script using the command `python3 workflow.py`
-* Check the predicted masks, model.h5 file, and the checkpoint file in the `wf-output` folder
+To Run the workflow using the production dataset, you must first obtain it.
+1. Install the Kaggle Python package: `pip3 install kaggle`
+2. Download the dataset: `python3 get-dataset.py`
+3. Run `python3 workflow.py`
+    - by default the script will look for data in `./data` which was created by `get-dataset.py`
 
 ## Executing Standalone Scripts
 
-* Clone the respository using the command `git clone <repository link>`
-* `cd` into the `lung-instance-segmentation-workflow/bin` directory
-* Use the command `pip3 -r requirements.txt` to install the required packages
-* Go back to the `lung-instance-segmentation-workflow` directory and ensure that you have a directory called `output` here
-* Download the dataset by running the python script called "get-dataset.py" by `python get-datatset.py`
-* Execute the `end-to-end.sh` script
+1. Use the command `pip3 -r requirements.txt` to install the required packages
+2. Go back to the `lung-instance-segmentation-workflow` directory and make a directory called `output`
+3. Download the dataset by running the python script called "get-dataset.py" by `python get-datatset.py`
+4. Execute the `end-to-end.sh` script
