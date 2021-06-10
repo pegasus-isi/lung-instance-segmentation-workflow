@@ -107,7 +107,7 @@ def create_site_catalog():
         runtime=300
     )\
     .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
-    # .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")
+    .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")
 
     sc.add_sites(local, donut)
     return sc
@@ -116,7 +116,6 @@ def run_workflow(args):
 
     # --- Write Properties ---------------------------------------------------------
     props = Properties()
-    #props["dagman.retry"] = "100"
     props["pegasus.mode"] = "development"
     props.write()
 
@@ -164,7 +163,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
     hpo_task.add_requirement(unet)
 
     train_model = Transformation( 
@@ -173,9 +172,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
-    train_model.add_requirement(unet)
-    train_model.add_requirement(utils)
+                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
 
     predict_masks = Transformation( 
                     "predict_masks",
@@ -183,8 +180,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
-    predict_masks.add_requirement(unet)
+                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
 
     evaluate_model = Transformation( 
                     "evaluate",
@@ -193,7 +189,6 @@ def run_workflow(args):
                     is_stageable=True,
                     container=unet_wf_cont
                 )
-    evaluate_model.add_requirement(unet)
 
     tc.add_transformations(preprocess, hpo_task, train_model, predict_masks, evaluate_model, unet, utils)
 
@@ -201,7 +196,7 @@ def run_workflow(args):
     tc.write()
 
     if args.donut:
-        print('Reached here')
+        log.info("using donut site catalog")
         sc = create_site_catalog()
         sc.write()
 
@@ -255,10 +250,7 @@ def run_workflow(args):
     hpo_job = Job(hpo_task)\
                     .add_inputs(*processed_training_files, *processed_val_files, *mask_files, unet_file)\
                     .add_outputs(study_result)\
-                    .add_checkpoint(hpo_checkpoint_result)\
-                    .add_profiles(Namespace.DAGMAN, key="retry", value=1000)\
-                    .add_profiles(Namespace.PEGASUS, key="checkpoint.time", value=10)\
-                    .add_profiles(Namespace.PEGASUS, key="maxwalltime", value=11)
+                    .add_checkpoint(hpo_checkpoint_result)
 
     wf.add_jobs(hpo_job)
 
@@ -269,7 +261,6 @@ def run_workflow(args):
     utils_file = File("utils.py")
     train_job = Job(train_model)\
                     .add_inputs(study_result, *processed_training_files, *processed_val_files, *mask_files, unet_file, utils_file)\
-                    .add_checkpoint(model)\
                     .add_outputs(model_copy)
 
     wf.add_jobs(train_job)
@@ -284,21 +275,21 @@ def run_workflow(args):
     wf.add_jobs(predict_job)
 
     #create evalute job
+    pdf_analysis = File("EvaluationAnalysis.pdf")
     evaluate_job = Job(evaluate_model)\
-                    .add_inputs(*processed_training_files, *processed_test_files, *predicted_masks, *mask_files, unet_file)\
-                    # .add_outputs(pdf_analysis)
+                    .add_inputs(*processed_training_files, *processed_test_files, *predicted_masks, *mask_files, unet_file).add_outputs(pdf_analysis)
 
     wf.add_jobs(evaluate_job)
 
 
     # run workflow
     log.info("begin workflow execution")
-    wf.plan(submit=True, dir="runs", verbose=3)\
-        .wait()\
-        .analyze()\
-        .statistics()
+    if args.donut:
+        wf.plan(submit=True, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
+    else:
+        wf.plan(submit=True, dir="runs", verbose=3)
 
-    wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
+    #wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
 
 
 if __name__ == "__main__":
