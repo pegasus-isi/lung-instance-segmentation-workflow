@@ -2,12 +2,14 @@
 *.yml
 pegasus.properties
 wf-output
+output
 wf-scratch
 scitech
 runs/*
-model.h5
-study_checkpoint.pkl
 study_results.txt
 *.png
 *.pdf
 bin/buildpush.sh
+containers/*.sif
+containers/*.tar
+data

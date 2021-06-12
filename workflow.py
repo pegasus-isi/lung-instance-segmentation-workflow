@@ -89,22 +89,22 @@ def create_site_catalog():
 
     donut = Site("donut")\
     .add_grids(
-        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="jaditi@donut-submit01", job_type=SupportedJobs.COMPUTE),
-        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="jaditi@donut-submit01", job_type=SupportedJobs.AUXILLARY)
+        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.COMPUTE),
+        Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.AUXILLARY)
     )\
     .add_directories(
-        Directory(Directory.SHARED_SCRATCH, "/nas/home/jaditi/pegasus/scratch")
-            .add_file_servers(FileServer("scp://jaditi@donut-submit01/nas/home/jaditi/pegasus/scratch", Operation.ALL)),
-        Directory(Directory.SHARED_STORAGE, "/nas/home/jaditi/pegasus/storage")
-            .add_file_servers(FileServer("scp://jaditi@donut-submit01/nas/home/jaditi/pegasus/storage", Operation.ALL))
+        Directory(Directory.SHARED_SCRATCH, "/nas/home/${DONUT_USER}/pegasus/scratch")
+            .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/scratch", Operation.ALL)),
+        Directory(Directory.SHARED_STORAGE, "/nas/home/${DONUT_USER}/pegasus/storage")
+            .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/storage", Operation.ALL))
     )\
     .add_pegasus_profile(
         style="ssh",
-        data_configuration="sharedfs",
+        data_configuration="nonsharedfs",
         change_dir="true",
         queue="donut-default",
         cores=1,
-        runtime=300
+        runtime=1800
     )\
     .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
     .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")
@@ -117,6 +117,8 @@ def run_workflow(args):
     # --- Write Properties ---------------------------------------------------------
     props = Properties()
     props["pegasus.mode"] = "development"
+    props["pegasus.transfer.links"] = "true"
+    props["pegasus.transfer.threads"] = "8"
     props.write()
 
 
@@ -125,11 +127,21 @@ def run_workflow(args):
     tc = TransformationCatalog()
 
     # all jobs to be run in container
-    unet_wf_cont = Container(
+    if (args.donut):
+        unet_wf_cont = Container(
+                    "unet_wf",
+                    Container.SINGULARITY,
+                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),
+                    #image="docker:///aditi1208/lung-segmentation:latest",
+                    image_site="local",
+                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]
+                )
+    else:
+        unet_wf_cont = Container(
                     "unet_wf",
                     Container.DOCKER,
                     image="docker:///aditi1208/lung-segmentation:latest",
-                    arguments="--runtime=nvidia --shm-size=15gb"
+                    arguments="--shm-size=1gb"
                 )
 
     tc.add_containers(unet_wf_cont)
@@ -149,6 +161,7 @@ def run_workflow(args):
                     is_stageable=True,
                     container=unet_wf_cont
                 )
+
     utils = Transformation(
                     "utils",
                     site="local",
@@ -163,8 +176,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
-    hpo_task.add_requirement(unet)
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=14400)
 
     train_model = Transformation( 
                     "train_model",
@@ -172,7 +184,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=7200)
 
     predict_masks = Transformation( 
                     "predict_masks",
@@ -180,7 +192,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_profiles(Namespace.PEGASUS, key="gpus", value=1)
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=3600)
 
     evaluate_model = Transformation( 
                     "evaluate",
@@ -216,13 +228,13 @@ def run_workflow(args):
                 _list.append(File(f.name))
                 rc.add_replica(site="local", lfn=f.name, pfn=f.resolve())
 
-    #checkpoint files  and results (empty one should be given if none exists) 
-    for fname in ["study_checkpoint.pkl", "model.h5", "bin/unet.py", "bin/utils.py"]:
+    #add an empty(probably checkpoint file
+    #checkpoint files  and results (empty one should be given if none exists)
+    for fname in ["inputs/checkpoints/study_checkpoint.pkl", "bin/unet.py", "bin/utils.py"]:
         p = Path(__file__).parent.resolve() / fname
         if not p.exists():
             with open(p, "w") as dummyFile:
                 dummyFile.write("")
-
         replicaFile = File(p.name)
         rc.add_replica(site="local", lfn=replicaFile, pfn=p)
 
@@ -257,11 +269,10 @@ def run_workflow(args):
     # create training job
     log.info("generating train_model job")
     model = File("model.h5")
-    model_copy = File("model_copy.h5")
     utils_file = File("utils.py")
     train_job = Job(train_model)\
                     .add_inputs(study_result, *processed_training_files, *processed_val_files, *mask_files, unet_file, utils_file)\
-                    .add_outputs(model_copy)
+                    .add_outputs(model)
 
     wf.add_jobs(train_job)
 
@@ -269,7 +280,7 @@ def run_workflow(args):
     log.info("generating prediction job; using {} test lung images".format(len(processed_test_files)))
     predicted_masks = [File("pred_"+f.lfn.replace(".png", "_mask.png")[5:]) for f in processed_test_files]
     predict_job = Job(predict_masks)\
-                    .add_inputs(model_copy, *processed_test_files, unet_file)\
+                    .add_inputs(model, *processed_test_files, unet_file)\
                     .add_outputs(*predicted_masks)
 
     wf.add_jobs(predict_job)
@@ -285,7 +296,7 @@ def run_workflow(args):
     # run workflow
     log.info("begin workflow execution")
     if args.donut:
-        wf.plan(submit=True, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
+        wf.plan(submit=False, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
     else:
         wf.plan(submit=True, dir="runs", verbose=3)
 
