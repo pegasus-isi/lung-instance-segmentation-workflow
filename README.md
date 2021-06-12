@@ -1,9 +1,7 @@
 # Lung-Instance-Segmentation-Workflow 
 (Instance segmentation with U-Net/Mask R-CNN workflow using Keras &amp; Ray Tune)
 
-![workflow](img/graph.png)
-
-![workflow-outline](img/workflow.jpg)
+![workflow](img/workflow.png)
 
 Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4256233/) for predicting lung masks from the images using [U-Net](https://arxiv.org/abs/1505.04597) model. 
 
