@@ -117,8 +117,9 @@ def run_workflow(args):
     # --- Write Properties ---------------------------------------------------------
     props = Properties()
     props["pegasus.mode"] = "development"
-    props["pegasus.transfer.links"] = "true"
-    props["pegasus.transfer.threads"] = "8"
+    if (args.donut):
+        props["pegasus.transfer.links"] = "true"
+        props["pegasus.transfer.threads"] = "8"
     props.write()
 
 
@@ -296,9 +297,9 @@ def run_workflow(args):
     # run workflow
     log.info("begin workflow execution")
     if args.donut:
-        wf.plan(submit=False, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
+        wf.plan(submit=True, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
     else:
-        wf.plan(submit=True, dir="runs", verbose=3)
+        wf.plan(submit=True, dir="runs", sites=["condorpool"], output_sites=["local"], verbose=3)
 
     #wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
 

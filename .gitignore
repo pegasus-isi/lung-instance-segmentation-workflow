@@ -1,9 +1,8 @@
 *.ipynb_checkpoints
 *.yml
 pegasus.properties
-wf-output
 output
-wf-scratch
+scratch
 scitech
 runs/*
 study_results.txt
