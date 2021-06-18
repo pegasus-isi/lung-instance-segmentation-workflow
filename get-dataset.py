@@ -9,6 +9,7 @@ os.environ['KAGGLE_KEY'] = "3ef0718e1548614d5463458cd451db42"
 import kaggle
 kaggle.api.dataset_download_files('nikhilpandey360/chest-xray-masks-and-labels/download', path='.', unzip=True)
 
+shutil.rmtree("Lung Segmentation")
 os.rename("data/Lung Segmentation", "data/LungSegmentation")
 
 DIR = "data/LungSegmentation/masks"
