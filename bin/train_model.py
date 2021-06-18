@@ -65,7 +65,6 @@ if __name__ == "__main__":
 
   w_path = os.path.join(unet.args.output_dir, "model_tmp.h5")
   path = os.path.join(unet.args.output_dir, "model.h5")
-  model_copy = os.path.join(unet.args.output_dir, "model_copy.h5")
 
   checkpoint_callback = ModelCheckpoint(w_path, monitor='loss', mode="min", save_best_only=True)
   early_stopping = EarlyStopping( monitor='loss', min_delta=0, patience=4)
@@ -94,4 +93,4 @@ if __name__ == "__main__":
   pdf = GeneratePDF()
   pdf.create(unet, pdf_path, history)   
   os.replace(w_path, path)
-  shutil.copyfile(path, model_copy)
+

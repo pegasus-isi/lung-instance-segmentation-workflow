@@ -54,7 +54,7 @@ if __name__=="__main__":
     X_test = [cv2.imread(os.path.join(CURR_PATH,i), 1) for i in actual_images]  
 
     X_test = np.array(X_test).reshape((len(X_test),dim,dim,3)).astype(np.float32)
-    model = load_model(os.path.join(CURR_PATH,"model_copy.h5"), compile=False)
+    model = load_model(os.path.join(CURR_PATH,"model.h5"), compile=False)
     preds = model.predict(X_test)
 
     for i in range(len(preds)):
@@ -68,4 +68,5 @@ if __name__=="__main__":
         masked_img[masked_img>0.5] = 255
         masked_img[masked_img<0.5] = 0
         masked_img=cv2.resize(masked_img,(width,height)).astype(np.float32)
-        cv2.imwrite(os.path.join(CURR_PATH,'pred_'+ str(test_data[i].split('.png')[0][5:]+'_mask.png')), masked_img)   
+        cv2.imwrite(os.path.join(CURR_PATH,'pred_'+ str(test_data[i].split('.png')[0][5:]+'_mask.png')), masked_img)
+

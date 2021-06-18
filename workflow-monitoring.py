@@ -36,12 +36,9 @@ parser.add_argument(
 
 
 top_dir = Path(__file__).parent.resolve()
-DONUT_USER_HOME = "/nas/home/jaditi/"
-
 
 def train_test_val_split(preprocess, training_input_files, mask_files, 
-        processed_training_files, processed_val_files, processed_test_files,
-        training_masks, val_masks, test_masks):
+        processed_training_files, processed_val_files, processed_test_files):
     np.random.seed(4)
     process_jobs = [Job(preprocess).add_args("--type", group) for group in ["train", "val", "test"]]
     augmented_masks = []
@@ -54,41 +51,26 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
             op_file1 = File("train_"+f.lfn.replace(".png", "_norm.png"))
             op_file2 = File("train_"+f.lfn.replace(".png", "_0_norm.png"))
             op_file3 = File("train_"+f.lfn.replace(".png", "_1_norm.png"))
-            op_mask2 = File(f.lfn.replace(".png", "_0_mask.png"))
-            op_mask3 = File(f.lfn.replace(".png", "_1_mask.png"))
-            for m in mask_files:
-                mname = m.lfn[0:-9]
-                if f.lfn[0:-4] == mname:
-                    training_masks.append(m)
-                    break
-            process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask2, op_mask3)
-            augmented_masks.extend([op_mask2, op_mask3])
+            op_mask1 = File(f.lfn.replace(".png", "_0_mask.png"))
+            op_mask2 = File(f.lfn.replace(".png", "_1_mask.png"))
+            process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask1, op_mask2)
+            augmented_masks.extend([op_mask1, op_mask2])
             processed_training_files.extend([op_file1, op_file2, op_file3])
-            training_masks.extend([op_mask2, op_mask3])
         elif i+1 <= 0.9*l:
             process_jobs[1].add_inputs(f)
             op_file = File("val_"+f.lfn.replace(".png", "_norm.png"))
-            for m in mask_files:
-                mname = m.lfn[0:-9]
-                if f.lfn[0:-4] == mname:
-                    val_masks.append(m)
-                    break
             process_jobs[1].add_outputs(op_file)
             processed_val_files.append(op_file)
         else:
             process_jobs[2].add_inputs(f)
             op_file = File("test_"+f.lfn.replace(".png", "_norm.png"))
-            for m in mask_files:
-                mname = m.lfn[0:-9]
-                if f.lfn[0:-4] == mname:
-                    test_masks.append(m)
             process_jobs[2].add_outputs(op_file)
             processed_test_files.append(op_file)
 
-    # for preprocess_job in process_jobs:
-    #     preprocess_job.add_inputs(*mask_files)
-    process_jobs[0].add_inputs(*training_masks)   
-    training_masks.extend(augmented_masks)
+    for preprocess_job in process_jobs:
+        preprocess_job.add_inputs(*mask_files)
+        
+    mask_files.extend(augmented_masks)
     return process_jobs
 
 def create_site_catalog():
@@ -103,7 +85,9 @@ def create_site_catalog():
             .add_file_servers(FileServer("file://" + shared_scratch_dir, Operation.ALL)),
         Directory(Directory.LOCAL_STORAGE, local_storage_dir)
             .add_file_servers(FileServer("file://" + local_storage_dir, Operation.ALL))
-    )
+    )\
+    .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+    .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")
 
     donut = Site("donut")\
     .add_grids(
@@ -122,10 +106,15 @@ def create_site_catalog():
         change_dir="true",
         queue="donut-default",
         cores=1,
-        runtime=1800
+        gpus=1,
+        runtime=1800,
+        grid_start_arguments="-m 10"
     )\
     .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
-    # .add_env(key="PEGASUS_HOME", value="/nas/home/jaditi/${PEGASUS_VERSION}")
+    .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")\
+    .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+    .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
+    .add_env(key="KICKSTART_MON_URL", value="rabbitmq://panorama:panorama@iris.isi.edu:15674/api/exchanges/panorama/monitoring/publish")
 
     sc.add_sites(local, donut)
     return sc
@@ -138,6 +127,10 @@ def run_workflow(args):
     if (args.donut):
         props["pegasus.transfer.links"] = "true"
         props["pegasus.transfer.threads"] = "8"
+    props["pegasus.monitord.encoding"] = "json"
+    props["pegasus.catalog.workflow.amqp.events"] = "stampede.*"
+    props["pegasus.catalog.workflow.amqp.url"] = "amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring"
+
     props.write()
 
 
@@ -146,23 +139,23 @@ def run_workflow(args):
     tc = TransformationCatalog()
 
     # all jobs to be run in container
+    if (args.donut):
+        unet_wf_cont = Container(
+                    "unet_wf",
+                    Container.SINGULARITY,
+                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),
+                    #image="docker:///aditi1208/lung-segmentation:latest",
+                    image_site="local",
+                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]
+                )
+    else:
+        unet_wf_cont = Container(
+                    "unet_wf",
+                    Container.DOCKER,
+                    image="docker:///aditi1208/lung-segmentation:latest",
+                    arguments="--shm-size=1gb"
+                )
 
-    if (args.donut):	
-	    unet_wf_cont = Container(	
-	                    "unet_wf",	
-	                    Container.SINGULARITY,	
-	                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),	
-	                    #image="docker:///aditi1208/lung-segmentation:latest",	
-	                    image_site="local",	
-	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
-	                )	
-    else:	
-	    unet_wf_cont = Container(	
-	                    "unet_wf",	
-	                    Container.DOCKER,	
-	                    image="docker:///aditi1208/lung-segmentation:latest",	
-	                    arguments="--shm-size=1gb"	
-	                )
     tc.add_containers(unet_wf_cont)
 
     preprocess = Transformation(
@@ -195,7 +188,10 @@ def run_workflow(args):
                     pfn=top_dir / "bin/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, gpus=1, runtime=14400)
+                )\
+                .add_pegasus_profile(cores=8, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
+                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+#                .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")\
 
     train_model = Transformation( 
                     "train_model",
@@ -203,7 +199,8 @@ def run_workflow(args):
                     pfn=top_dir / "bin/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, gpus=1, runtime=7200)
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=7200, grid_start_arguments="-G -m 10")\
+                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
 
     predict_masks = Transformation( 
                     "predict_masks",
@@ -211,7 +208,8 @@ def run_workflow(args):
                     pfn=top_dir / "bin/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, gpus=1, runtime=3600)
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=3600, grid_start_arguments="-G -m 10")\
+                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
 
     evaluate_model = Transformation( 
                     "evaluate",
@@ -267,12 +265,8 @@ def run_workflow(args):
     processed_training_files = []
     processed_val_files = []
     processed_test_files = []
-    training_masks = []
-    val_masks = []
-    test_masks = []
     process_jobs = train_test_val_split(preprocess, training_input_files, mask_files,
-     processed_training_files, processed_val_files, processed_test_files,
-     training_masks, val_masks, test_masks)
+     processed_training_files, processed_val_files, processed_test_files)
     wf.add_jobs(*process_jobs)
     log.info("generated 3 preprocess jobs")
 
@@ -283,9 +277,7 @@ def run_workflow(args):
     study_result = File("study_results.txt")
     unet_file = File("unet.py")
     hpo_job = Job(hpo_task)\
-                    .add_inputs(*processed_training_files, *processed_val_files, 
-                                    *training_masks, *val_masks, 
-                                    unet_file)\
+                    .add_inputs(*processed_training_files, *processed_val_files, *mask_files, unet_file)\
                     .add_outputs(study_result)\
                     .add_checkpoint(hpo_checkpoint_result)
 
@@ -296,11 +288,8 @@ def run_workflow(args):
     model = File("model.h5")
     utils_file = File("utils.py")
     train_job = Job(train_model)\
-                    .add_inputs(study_result, 
-                            *processed_training_files, *processed_val_files, 
-                            *training_masks, *val_masks,
-                            unet_file, utils_file)\
-                    .add_outputs(model_copy)
+                    .add_inputs(study_result, *processed_training_files, *processed_val_files, *mask_files, unet_file, utils_file)\
+                    .add_outputs(model)
 
     wf.add_jobs(train_job)
 
@@ -316,11 +305,10 @@ def run_workflow(args):
     #create evalute job
     pdf_analysis = File("EvaluationAnalysis.pdf")
     evaluate_job = Job(evaluate_model)\
-                    .add_inputs(*processed_training_files, *processed_test_files, 
-                    *predicted_masks, *test_masks, 
-                    unet_file).add_outputs(pdf_analysis)
+                    .add_inputs(*processed_training_files, *processed_test_files, *predicted_masks, *mask_files, unet_file).add_outputs(pdf_analysis)
 
     wf.add_jobs(evaluate_job)
+
 
     # run workflow
     log.info("begin workflow execution")
