@@ -60,6 +60,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
                 mname = m.lfn[0:-9]
                 if f.lfn[0:-4] == mname:
                     training_masks.append(m)
+                    process_jobs[0].add_inputs(m)
                     break
             process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask2, op_mask3)
             augmented_masks.extend([op_mask2, op_mask3])
@@ -87,7 +88,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
 
     # for preprocess_job in process_jobs:
     #     preprocess_job.add_inputs(*mask_files)
-    process_jobs[0].add_inputs(*training_masks)   
+    # process_jobs[0].add_inputs(*training_masks)   
     training_masks.extend(augmented_masks)
     return process_jobs
 
