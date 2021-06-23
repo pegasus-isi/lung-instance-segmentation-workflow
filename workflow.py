@@ -60,12 +60,10 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
                 mname = m.lfn[0:-9]
                 if f.lfn[0:-4] == mname:
                     training_masks.append(m)
-                    process_jobs[0].add_inputs(m)
                     break
             process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask2, op_mask3)
             augmented_masks.extend([op_mask2, op_mask3])
             processed_training_files.extend([op_file1, op_file2, op_file3])
-            training_masks.extend([op_mask2, op_mask3])
         elif i+1 <= 0.9*l:
             process_jobs[1].add_inputs(f)
             op_file = File("val_"+f.lfn.replace(".png", "_norm.png"))
@@ -88,7 +86,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files,
 
     # for preprocess_job in process_jobs:
     #     preprocess_job.add_inputs(*mask_files)
-    # process_jobs[0].add_inputs(*training_masks)   
+    process_jobs[0].add_inputs(*training_masks)   
     training_masks.extend(augmented_masks)
     return process_jobs
 
@@ -152,7 +150,7 @@ def run_workflow(args):
 	    unet_wf_cont = Container(	
 	                    "unet_wf",	
 	                    Container.SINGULARITY,	
-	                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),	
+	                    image=str(Path(".").parent.resolve() / "lungseg.sif"),	
 	                    #image="docker:///aditi1208/lung-segmentation:latest",	
 	                    image_site="local",	
 	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
@@ -294,14 +292,16 @@ def run_workflow(args):
 
     # create training job
     log.info("generating train_model job")
-    model = File("model.h5")
+    model = File("model_copy.h5")
+    model_checkpoint = File("model.py")
     utils_file = File("utils.py")
     train_job = Job(train_model)\
                     .add_inputs(study_result, 
                             *processed_training_files, *processed_val_files, 
                             *training_masks, *val_masks,
                             unet_file, utils_file)\
-                    .add_outputs(model_copy)
+                    .add_outputs(model)\
+                    .add_checkpoint(model_checkpoint)
 
     wf.add_jobs(train_job)
 
