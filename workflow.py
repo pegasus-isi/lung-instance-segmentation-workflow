@@ -81,7 +81,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files, processed
 
     # for preprocess_job in process_jobs:
     #     preprocess_job.add_inputs(*mask_files)
-    process_jobs[0].add_inputs(*training_masks)   
+    process_jobs[0].add_inputs(*training_masks)
     training_masks.extend(augmented_masks)
     return process_jobs
 
@@ -153,7 +153,7 @@ def run_workflow(args):
 	    unet_wf_cont = Container(	
 	                    "unet_wf",	
 	                    Container.SINGULARITY,	
-	                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),	
+	                    image=str(Path(".").parent.resolve() / "lungseg.sif"),	
 	                    #image="docker:///aditi1208/lung-segmentation:latest",	
 	                    image_site="local",	
 	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
