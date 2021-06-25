@@ -13,6 +13,7 @@ Lung instance segmentation workflow uses [Chest X-ray](https://www.ncbi.nlm.nih.
 To Run the workflow using the production dataset, you must first obtain it.
 1. Install the Kaggle Python package: `pip3 install kaggle`
 2. Download the dataset: `python3 get-dataset.py`
+    - The dataset is also backed up at `/lizard/projects/ml-workflows/lung-segmentation-workflow/lung-segmentation-data.tar.gz` and has a `sha256` hash of `f30a3d450dce65a4c0f93c9e408e0cd457023d70db9599032179c36758fbf5fc` 
 3. Run `python3 workflow.py`
     - by default the script will look for data in `./data` which was created by `get-dataset.py`
 
