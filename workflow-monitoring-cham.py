@@ -34,7 +34,6 @@ parser.add_argument(
     help="Flag to run the workflow on donut cluster"
 )
 
-
 top_dir = Path(__file__).parent.resolve()
 
 def train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks):
@@ -80,7 +79,9 @@ def train_test_val_split(preprocess, training_input_files, mask_files, processed
             process_jobs[2].add_outputs(op_file)
             processed_test_files.append(op_file)
 
-    process_jobs[0].add_inputs(*training_masks)   
+    # for preprocess_job in process_jobs:
+    #     preprocess_job.add_inputs(*mask_files)
+    process_jobs[0].add_inputs(*training_masks)
     training_masks.extend(augmented_masks)
     return process_jobs
 
@@ -91,69 +92,79 @@ def create_site_catalog():
     local_storage_dir = os.path.join(top_dir, "output")
 
     local = Site("local")\
-        .add_directories(
-            Directory(Directory.SHARED_SCRATCH, shared_scratch_dir)
-                .add_file_servers(FileServer("file://" + shared_scratch_dir, Operation.ALL)),
-            Directory(Directory.LOCAL_STORAGE, local_storage_dir)
-                .add_file_servers(FileServer("file://" + local_storage_dir, Operation.ALL))
-        )\
-        .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
-        .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")
-    
+                .add_directories(
+                    Directory(Directory.SHARED_SCRATCH, shared_scratch_dir)
+                        .add_file_servers(FileServer("file://" + shared_scratch_dir, Operation.ALL)),
+                    Directory(Directory.LOCAL_STORAGE, local_storage_dir)
+                        .add_file_servers(FileServer("file://" + local_storage_dir, Operation.ALL))
+                )
+#\
+#                .add_pegasus_profile(grid_start_arguments="-m 10")\
+#                .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+#                .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")
+
     condorpool = Site("condorpool")\
+                    .add_directories(
+                        Directory(Directory.SHARED_SCRATCH, "/scratch")
+                            .add_file_servers(FileServer("http://192.168.100.100/~panorama/scratch", Operation.GET))\
+                            .add_file_servers(FileServer("scp://panorama@192.168.100.100/home/panorama/public_html/scratch", Operation.PUT)),
+                        Directory(Directory.SHARED_STORAGE, "/storage")
+                            .add_file_servers(FileServer("http://192.168.100.100/~panorama/storage", Operation.GET))\
+                            .add_file_servers(FileServer("scp://panorama@192.168.100.100/home/panorama/public_html/storage", Operation.PUT))
+                    )\
                     .add_pegasus_profile(
                         style="condor",
-                        data_configuration="condorio"
+                        data_configuration="nonsharedfs",
+                        grid_start_arguments="-m 10",
+                        cores=4
                     )\
                     .add_condor_profile(universe="vanilla")\
-                    .add_profiles(Namespace.PEGASUS, key="data.configuration", value="condorio")
-                    .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
-                    .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
+                    .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/panorama/.ssh/storage_rsa")\
                     .add_env(key="KICKSTART_MON_URL", value="rabbitmq://panorama:panorama@iris.isi.edu:15674/api/exchanges/panorama/monitoring/publish")
+#                    .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+#                    .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
     
-
     donut = Site("donut")\
-        .add_grids(
-            Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.COMPUTE),
-            Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.AUXILLARY)
-        )\
-        .add_directories(
-            Directory(Directory.SHARED_SCRATCH, "/nas/home/${DONUT_USER}/pegasus/scratch")
-                .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/scratch", Operation.ALL)),
-            Directory(Directory.SHARED_STORAGE, "/nas/home/${DONUT_USER}/pegasus/storage")
-                .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/storage", Operation.ALL))
-        )\
-        .add_pegasus_profile(
-            style="ssh",
-            data_configuration="nonsharedfs",
-            change_dir="true",
-            queue="donut-default",
-            cores=1,
-            gpus=1,
-            runtime=1800,
-            grid_start_arguments="-m 10"
-        )\
-        .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
-        .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")\
-        .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
-        .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
-        .add_env(key="KICKSTART_MON_URL", value="rabbitmq://panorama:panorama@iris.isi.edu:15674/api/exchanges/panorama/monitoring/publish")
+            .add_grids(
+                Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.COMPUTE),
+                Grid(grid_type=Grid.BATCH, scheduler_type=Scheduler.SLURM, contact="${DONUT_USER}@donut-submit01", job_type=SupportedJobs.AUXILLARY)
+            )\
+            .add_directories(
+                Directory(Directory.SHARED_SCRATCH, "/nas/home/${DONUT_USER}/pegasus/scratch")
+                    .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/scratch", Operation.ALL)),
+                Directory(Directory.SHARED_STORAGE, "/nas/home/${DONUT_USER}/pegasus/storage")
+                    .add_file_servers(FileServer("scp://${DONUT_USER}@donut-submit01${DONUT_USER_HOME}/pegasus/storage", Operation.ALL))
+            )\
+            .add_pegasus_profile(
+                style="ssh",
+                data_configuration="nonsharedfs",
+                change_dir="true",
+                queue="donut-default",
+                grid_start_arguments="-m 10",
+                cores=1,
+                runtime=1800
+            )\
+            .add_profiles(Namespace.PEGASUS, key="SSH_PRIVATE_KEY", value="/home/pegasus/.ssh/bosco_key.rsa")\
+            .add_env(key="PEGASUS_HOME", value="${DONUT_USER_HOME}/${PEGASUS_VERSION}")\
+            .add_env(key="PEGASUS_TRANSFER_PUBLISH", value="1")\
+            .add_env(key="PEGASUS_AMQP_URL", value="amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring")\
+            .add_env(key="KICKSTART_MON_URL", value="rabbitmq://panorama:panorama@iris.isi.edu:15674/api/exchanges/panorama/monitoring/publish")
 
-    sc.add_sites(local, donut, condorpool)
+    #sc.add_sites(local, donut, condorpool)
+    sc.add_sites(local, condorpool)
     return sc
 
 def run_workflow(args):
 
     # --- Write Properties ---------------------------------------------------------
     props = Properties()
-    props["pegasus.mode"] = "development"
-    if (args.donut):
-        props["pegasus.transfer.links"] = "true"
-        props["pegasus.transfer.threads"] = "8"
+    #props["pegasus.mode"] = "development"
+    #props["pegasus.transfer.links"] = "true"
+    props["pegasus.transfer.bypass.input.staging"] = "true"
+    props["pegasus.transfer.threads"] = "4"
     props["pegasus.monitord.encoding"] = "json"
     props["pegasus.catalog.workflow.amqp.events"] = "stampede.*"
     props["pegasus.catalog.workflow.amqp.url"] = "amqp://panorama:panorama@iris.isi.edu:5674/panorama/monitoring"
-
     props.write()
 
 
@@ -162,95 +173,78 @@ def run_workflow(args):
     tc = TransformationCatalog()
 
     # all jobs to be run in container
-    if (args.donut):
-        unet_wf_cont = Container(
-                    "unet_wf",
-                    Container.SINGULARITY,
-                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),
-                    #image="docker:///aditi1208/lung-segmentation:latest",
-                    image_site="local",
-                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]
-                )
-    else:
-        unet_wf_cont = Container(
-                    "unet_wf",
-                    Container.DOCKER,
-                    image="docker:///aditi1208/lung-segmentation:latest",
-                    arguments="--shm-size=1gb"
-                )
+
+    unet_wf_cont = Container("unet_wf",
+            Container.SINGULARITY,
+            image="http://192.168.100.100/~panorama/LungSegmentation/containers/lung-segmentation_latest.sif",
+            image_site="condorpool"
+    )
 
     tc.add_containers(unet_wf_cont)
 
     preprocess = Transformation(
                     "preprocess",
-                    site="local",
-                    pfn=top_dir / "bin/preprocess.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/preprocess.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_condor_profile(requirements="(Machine != \"nvidia-worker.novalocal\")")
 
     unet = Transformation(
                     "unet",
-                    site="local",
-                    pfn=top_dir / "bin/unet.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/unet.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_condor_profile(requirements="(Machine != \"nvidia-worker.novalocal\")")
 
     utils = Transformation(
                     "utils",
-                    site="local",
-                    pfn=top_dir / "bin/utils.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/utils.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_condor_profile(requirements="(Machine != \"nvidia-worker.novalocal\")")
 
     hpo_task = Transformation( 
                     "hpo",
-                    site="local",
-                    pfn=top_dir / "bin/hpo.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )\
-                .add_pegasus_profile(cores=8, gpus=1, runtime=14400, grid_start_arguments="-G -m 10")\
-                .add_env(key="KICKSTART_MON_GRAPHICS_UTIL", value="TRUE")\
-                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=14400)
 
     train_model = Transformation( 
                     "train_model",
-                    site="local",
-                    pfn=top_dir / "bin/train_model.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, gpus=1, runtime=7200, grid_start_arguments="-G -m 10")\
-                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=7200)
 
     predict_masks = Transformation( 
                     "predict_masks",
-                    site="local",
-                    pfn=top_dir / "bin/prediction.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, gpus=1, runtime=3600, grid_start_arguments="-G -m 10")\
-                .add_env(key="KICKSTART_MON_GRAPHICS_PCIE", value="TRUE")
+                ).add_pegasus_profile(cores=8, gpus=1, runtime=3600)
 
     evaluate_model = Transformation( 
                     "evaluate",
-                    site="local",
-                    pfn=top_dir / "bin/evaluate.py",
+                    site="condorpool",
+                    pfn="http://192.168.100.100/~panorama/LungSegmentation/bin/evaluate.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_condor_profile(requirements="(Machine != \"nvidia-worker.novalocal\")")
 
     tc.add_transformations(preprocess, hpo_task, train_model, predict_masks, evaluate_model, unet, utils)
 
     log.info("writing tc with transformations: {}, containers: {}".format([k for k in tc.transformations], [k for k in tc.containers]))
     tc.write()
 
-    if args.donut:
-        log.info("using donut site catalog")
-        sc = create_site_catalog()
-        sc.write()
+    sc = create_site_catalog()
+    sc.write()
 
     # --- Write ReplicaCatalog -----------------------------------------------------
     training_input_files = []
@@ -266,17 +260,17 @@ def run_workflow(args):
             if f.name.endswith(".png"):
                 if f.name in IGNORE_IMAGES: continue
                 _list.append(File(f.name))
-                rc.add_replica(site="local", lfn=f.name, pfn=f.resolve())
+                rc.add_replica(site="condorpool", lfn=f.name, pfn="http://192.168.100.100/~panorama/LungSegmentation/"+str(f))
 
     #add an empty(probably checkpoint file
     #checkpoint files  and results (empty one should be given if none exists)
-    for fname in ["inputs/checkpoints/study_checkpoint.pkl", "bin/unet.py", "bin/utils.py"]:
+    for fname in ["inputs/checkpoints/study_checkpoint.pkl", "bin/unet.py", "bin/utils.py", "inputs/study_results.txt"]:
         p = Path(__file__).parent.resolve() / fname
         if not p.exists():
             with open(p, "w") as dummyFile:
                 dummyFile.write("")
         replicaFile = File(p.name)
-        rc.add_replica(site="local", lfn=replicaFile, pfn=p)
+        rc.add_replica(site="condorpool", lfn=replicaFile, pfn="http://192.168.100.100/~panorama/LungSegmentation/"+fname)
 
     log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
     rc.write()
@@ -293,11 +287,10 @@ def run_workflow(args):
     test_masks = []
     process_jobs = train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks)
     wf.add_jobs(*process_jobs)
-    log.info("generated 3 preprocess jobs")
-
+    #log.info("generated 3 preprocess jobs")
 
     #create hpo job
-    log.info("generating hpo job")
+    #log.info("generating hpo job")
     hpo_checkpoint_result = File("study_checkpoint.pkl")
     study_result = File("study_results.txt")
     unet_file = File("unet.py")
@@ -306,7 +299,7 @@ def run_workflow(args):
                     .add_outputs(study_result)\
                     .add_checkpoint(hpo_checkpoint_result)
 
-    wf.add_jobs(hpo_job)
+    #wf.add_jobs(hpo_job)
 
     # create training job
     log.info("generating train_model job")
@@ -335,13 +328,12 @@ def run_workflow(args):
 
     wf.add_jobs(evaluate_job)
 
-
     # run workflow
     log.info("begin workflow execution")
     if args.donut:
-        wf.plan(submit=True, dir="runs", sites=["donut"], output_sites=["local"], verbose=3)
+        wf.plan(submit=False, cleanup="leaf", sites=["donut"], output_sites=["local"])
     else:
-        wf.plan(submit=True, dir="runs", sites=["condorpool"], output_sites=["local"], verbose=3)
+        wf.plan(submit=True, cleanup="leaf", dir="submit", sites=["condorpool"], output_sites=["condorpool"])
 
     #wf.graph(include_files=True, no_simplify=True, label="xform-id", output="graph.dot")
 

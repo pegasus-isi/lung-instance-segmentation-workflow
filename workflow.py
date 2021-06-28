@@ -153,8 +153,8 @@ def run_workflow(args):
 	    unet_wf_cont = Container(	
 	                    "unet_wf",	
 	                    Container.SINGULARITY,	
-	                    image=str(Path(".").parent.resolve() / "lungseg.sif"),	
-	                    #image="docker:///aditi1208/lung-segmentation:latest",	
+	                    image=str(Path(".").parent.resolve() / "containers/lung-segmentation_latest.sif"),
+                            #image="docker:///aditi1208/lung-segmentation:latest",	
 	                    image_site="local",	
 	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
 	                )	
