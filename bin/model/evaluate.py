@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 import os
-import pandas as pd
 from unet import UNet
-import json
 import numpy as np
 import cv2
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.pyplot as plt
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import inch, cm
 import argparse

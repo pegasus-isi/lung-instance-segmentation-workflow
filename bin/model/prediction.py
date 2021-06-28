@@ -6,9 +6,7 @@ import pickle
 import argparse
 import numpy as np
 from tensorflow.keras.models import load_model
-import tensorflow as tf
 from unet import UNet
-import argparse
 
 
 def parse_args(args):

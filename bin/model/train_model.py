@@ -1,26 +1,15 @@
 #!/usr/bin/env python3
-import os
+import os, sys
 import pandas as pd
 from unet import UNet
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
-import json
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.pyplot as plt
-import signal
-import shutil
-import tensorflow as tf
-from keras import backend as keras
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.lib.units import inch, cm
-import numpy as np
-import cv2
 import segmentation_models as sm
 from segmentation_models import get_preprocessing
 from segmentation_models.metrics import iou_score
 from utils import GeneratePDF
-from tensorflow.keras.callbacks import Callback, EarlyStopping
-import argparse, sys
+from tensorflow.keras.callbacks import EarlyStopping
+import argparse
 
 def parse_args(args):
     """
@@ -43,7 +32,7 @@ def parse_args(args):
                 help="directory where output files will be written to"
             )
     
-    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 40, help = "Number of training epochs")
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 4, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
     parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
     parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
