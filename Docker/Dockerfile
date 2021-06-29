@@ -1,7 +1,7 @@
 FROM opensciencegrid/tensorflow-gpu:2.3-cuda-10.1
 WORKDIR /usr/bin
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
+    apt-get install -y software-properties-common wget curl openssh-client && \
     add-apt-repository ppa:deadsnakes/ppa
 RUN apt update && \
     apt install -y \
