@@ -1,22 +1,12 @@
 FROM ryantanaka/cuda10.1:latest
-# set locale
-ENV LANG C.UTF-8
 
 WORKDIR /usr/bin
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
 RUN apt update && \
     apt install -y \
-    python3.6 \
-    python3-pip \
-    libgl1-mesa-glx \
-    wget \
-    curl
+    libgl1-mesa-glx
 
 RUN pip3 install --upgrade pip setuptools
 RUN pip3 install \
-    #scikit-learn \
     tensorflow==2.1.0 \
     h5py \
     numpy==1.18.4 \
@@ -26,8 +16,6 @@ RUN pip3 install \
     optuna \
     segmentation_models \
     dataclasses \
-    # tabulate  \
     matplotlib \
     reportlab \
     joblib
-ENV LANG C.UTF-8

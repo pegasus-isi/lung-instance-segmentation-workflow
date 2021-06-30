@@ -1,4 +1,4 @@
-FROM opensciencegrid/tensorflow-gpu:2.3-cuda-10.1
+FROM ubuntu:bionic
 WORKDIR /usr/bin
 RUN apt-get update && \
     apt-get install -y software-properties-common && \
