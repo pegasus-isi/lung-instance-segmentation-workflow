@@ -30,6 +30,12 @@ parser.add_argument(
     help="Path to directory containing lung mask images for training and validation"
 )
 parser.add_argument(
+    "--num-inputs",
+    type=int,
+    default=-1,
+    help="Number of files to use as input (-1) to use the complete dataset"
+)
+parser.add_argument(
     "--donut",
     action='store_true',
     help="Flag to run the workflow on donut cluster"
@@ -37,13 +43,14 @@ parser.add_argument(
 
 top_dir = Path(__file__).parent.resolve()
 
-def train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks):
+def train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks, num_inputs):
     np.random.seed(4)
     process_jobs = [Job(preprocess).add_args("--type", group) for group in ["train", "val", "test"]]
     augmented_masks = []
     random.shuffle(training_input_files)
 
-    l = len(training_input_files)
+    l = len(training_input_files) if num_inputs == -1 else num_inputs
+    print('Length ', l)
     for i, f in enumerate(training_input_files):
         if i+1 <= 0.7*l:
             process_jobs[0].add_inputs(f)
@@ -291,7 +298,7 @@ def run_workflow(args):
     training_masks = []
     val_masks = []
     test_masks = []
-    process_jobs = train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks)
+    process_jobs = train_test_val_split(preprocess, training_input_files, mask_files, processed_training_files, processed_val_files, processed_test_files, training_masks, val_masks, test_masks, args.num_inputs)
     wf.add_jobs(*process_jobs)
     log.info("generated 3 preprocess jobs")
 
