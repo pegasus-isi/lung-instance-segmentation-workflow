@@ -36,7 +36,7 @@ def parse_args(args):
                 help="directory where output files will be written to"
             )
 
-    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
+    parser.add_argument('--epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
     parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
     parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
