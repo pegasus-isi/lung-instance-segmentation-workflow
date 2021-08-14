@@ -7,6 +7,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import inch, cm
 import argparse
 import sys
+import re
 
 def parse_args(args):
     """
@@ -100,7 +101,28 @@ if __name__=="__main__":
   unet = UNet(parse_args(sys.argv[1:]))
   path = unet.args.output_dir
 
-  all_files = [i for i in os.listdir(path) if ".png" in i]
+    
+  # handle the case where jobs are clustered and we don't want all other files picked up
+  # aside from what is needed for this job
+  p = re.compile(r"test_([A-Z]{6}_\d{4}_\d)_norm.png")
+  all_files = list()
+  for f in os.listdir(path):
+    # if predicted mask, add to all_files
+    if f.startswith("pred_"):
+      all_files.append(f)
+      print("added {}".format(f))
+    # else make sure file matches the pattern of a test file and
+    # also add the corresponding mask (which should exist here)
+    else:
+      matched = p.match(f)
+      if matched:
+        # add test lung image file
+        all_files.append(f)
+        print("added {}".format(f))
+        m = "{}_mask.png".format(matched.group(1))
+        all_files.append(m)
+        print("added {}".format(m))
+
 
   orig_images, actual_mask_images, masks_pred = get_images(all_files)
 
