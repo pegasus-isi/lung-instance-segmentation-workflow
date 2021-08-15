@@ -135,7 +135,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files, processed
                 log.info("preprocess_test adding input {}".format(f))
                 processed_test_files.append(op_file)
 
-            i += 1
+        i += 1
 
     log.info("writing rc with {} files collected from: {}".format(len(training_input_files)+len(mask_files), [LUNG_IMG_DIR, LUNG_MASK_IMG_DIR]))
     rc.write()
