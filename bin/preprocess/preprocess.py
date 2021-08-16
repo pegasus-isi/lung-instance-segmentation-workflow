@@ -180,8 +180,3 @@ if __name__=="__main__":
         print("removing {}".format(f))
         Path(f).unlink()
         assert Path(f).exists() == False
-
-    for f in all_masks:
-        print("removing {}".format(f))
-        Path(f).unlink()
-        assert Path(f).exists() == False
