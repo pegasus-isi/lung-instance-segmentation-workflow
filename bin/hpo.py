@@ -2,13 +2,18 @@
 #Time = 29035
 import cv2
 import os, sys
+#import joblib
 import argparse
 from unet import UNet
+from keras import backend as keras
 import json
 import numpy as np
 import pandas as pd
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import Callback, EarlyStopping
 from tensorflow.keras.optimizers import Adam
+import signal, traceback
+import pickle, shutil
+import tarfile
 import segmentation_models as sm
 import optuna
 from segmentation_models.metrics import iou_score
@@ -36,7 +41,7 @@ def parse_args(args):
                 help="directory where output files will be written to"
             )
 
-    parser.add_argument('--epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 25, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
     parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
     parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
@@ -69,7 +74,7 @@ def tune_unet(trial, direction="minimize"):
     lr = trial.suggest_categorical("lr", [1e-2, 1e-3, 1e-5, 3e-5, 1e-7, 2e-3])
     model = sm.Unet('resnet34', input_shape=(256,256,3), encoder_weights='imagenet')
 
-    early_stopping = EarlyStopping( monitor='loss', min_delta=0, patience=4)
+    early_stopping = EarlyStopping( monitor='loss', min_delta=0, patience=25)
     callbacks = [early_stopping]
 
     # Compile the U-Net model

@@ -180,3 +180,4 @@ if __name__=="__main__":
         print("removing {}".format(f))
         Path(f).unlink()
         assert Path(f).exists() == False
+

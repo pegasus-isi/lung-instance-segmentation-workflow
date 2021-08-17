@@ -2,8 +2,8 @@
 import os
 import shutil
 
-os.environ['KAGGLE_USERNAME'] = "jain12aditi"
-os.environ['KAGGLE_KEY'] = "3ef0718e1548614d5463458cd451db42"
+os.environ['KAGGLE_USERNAME'] = "USERNAME"
+os.environ['KAGGLE_KEY'] = "KAGGLE_KEY"
 
 
 import kaggle

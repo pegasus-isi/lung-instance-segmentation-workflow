@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 import os
+import pandas as pd
 from unet import UNet
+import json
 import numpy as np
 import cv2
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.pyplot as plt
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import inch, cm
 import argparse
 import sys
-import re
 
 def parse_args(args):
     """
@@ -30,7 +33,7 @@ def parse_args(args):
                 help="directory where output files will be written to"
             )
     
-    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 20, help = "Number of training epochs")
+    parser.add_argument('-epochs',  metavar='num_epochs', type=int, default = 25, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
     parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
     parser.add_argument('--fig_sizey',  metavar='fig_sizey', type=int, default = 11, help = "Analysis graph's size y")
@@ -101,28 +104,7 @@ if __name__=="__main__":
   unet = UNet(parse_args(sys.argv[1:]))
   path = unet.args.output_dir
 
-    
-  # handle the case where jobs are clustered and we don't want all other files picked up
-  # aside from what is needed for this job
-  p = re.compile(r"test_([A-Z]{6}_\d{4}_\d)_norm.png")
-  all_files = list()
-  for f in os.listdir(path):
-    # if predicted mask, add to all_files
-    if f.startswith("pred_"):
-      all_files.append(f)
-      print("added {}".format(f))
-    # else make sure file matches the pattern of a test file and
-    # also add the corresponding mask (which should exist here)
-    else:
-      matched = p.match(f)
-      if matched:
-        # add test lung image file
-        all_files.append(f)
-        print("added {}".format(f))
-        m = "{}_mask.png".format(matched.group(1))
-        all_files.append(m)
-        print("added {}".format(m))
-
+  all_files = [i for i in os.listdir(path) if ".png" in i]
 
   orig_images, actual_mask_images, masks_pred = get_images(all_files)
 
