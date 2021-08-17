@@ -72,7 +72,7 @@ def train_test_val_split(preprocess, training_input_files, mask_files, processed
         rc.add_replica(site="local", lfn=replicaFile, pfn=p)
 
     for f in LUNG_IMG_DIR.iterdir():
-        if f.name.endswith(".png") and "mask" not in f.name.lower():
+        if f.name.endswith(".png") and ("mask" not in f.name.lower()) and (f.name not in IGNORE_IMAGES):
             training_input_files.append(f)
 
     random.shuffle(training_input_files)
@@ -80,60 +80,59 @@ def train_test_val_split(preprocess, training_input_files, mask_files, processed
     print('Length ', l)
 
     i = 0
-    for file in LUNG_IMG_DIR.iterdir():
-        if file.name not in IGNORE_IMAGES:
-            if i+1 <= 0.7*l:
-                f = File("train_{}".format(file.name))
-                rc.add_replica(site="local", lfn=f, pfn=file.resolve()) 
+    for file in training_input_files:
+        if i+1 <= 0.7*l:
+            f = File("train_{}".format(file.name))
+            rc.add_replica(site="local", lfn=f, pfn=file.resolve()) 
 
-                process_jobs[0].add_inputs(f)
-                log.info("preprocess_train adding input {}".format(f))
-                op_file1 = File(f.lfn.replace(".png", "_norm.png"))
-                op_file2 = File(f.lfn.replace(".png", "_0_norm.png"))
-                op_file3 = File(f.lfn.replace(".png", "_1_norm.png"))
-                op_mask2 = File(file.name.replace(".png", "_0_mask.png"))
-                op_mask3 = File(file.name.replace(".png", "_1_mask.png"))
+            process_jobs[0].add_inputs(f)
+            log.info("preprocess_train adding input {}".format(f))
+            op_file1 = File(f.lfn.replace(".png", "_norm.png"))
+            op_file2 = File(f.lfn.replace(".png", "_0_norm.png"))
+            op_file3 = File(f.lfn.replace(".png", "_1_norm.png"))
+            op_mask2 = File(file.name.replace(".png", "_0_mask.png"))
+            op_mask3 = File(file.name.replace(".png", "_1_mask.png"))
 
-                for m in mask_files:
-                    mname = m.lfn[0:-9]
-                    if file.name[0:-4] == mname:
-                        training_masks.append(m)
-                        break
+            for m in mask_files:
+                mname = m.lfn[0:-9]
+                if file.name[0:-4] == mname:
+                    training_masks.append(m)
+                    break
 
-                process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask2, op_mask3)
-                augmented_masks.extend([op_mask2, op_mask3])
-                processed_training_files.extend([op_file1, op_file2, op_file3])
+            process_jobs[0].add_outputs(op_file1, op_file2, op_file3, op_mask2, op_mask3)
+            augmented_masks.extend([op_mask2, op_mask3])
+            processed_training_files.extend([op_file1, op_file2, op_file3])
 
-            elif i+1 <= 0.9*l:
-                f = File("val_{}".format(file.name))
-                rc.add_replica(site="local", lfn=f, pfn=file.resolve())
+        elif i+1 <= 0.9*l:
+            f = File("val_{}".format(file.name))
+            rc.add_replica(site="local", lfn=f, pfn=file.resolve())
 
-                process_jobs[1].add_inputs(f)
-                log.info("preprocess_val adding input {}".format(f))
-                op_file = File(f.lfn.replace(".png", "_norm.png"))
-                for m in mask_files:
-                    mname = m.lfn[0:-9]
-                    if file.name[0:-4] == mname:
-                        val_masks.append(m)
-                        break
+            process_jobs[1].add_inputs(f)
+            log.info("preprocess_val adding input {}".format(f))
+            op_file = File(f.lfn.replace(".png", "_norm.png"))
+            for m in mask_files:
+                mname = m.lfn[0:-9]
+                if file.name[0:-4] == mname:
+                    val_masks.append(m)
+                    break
                     
-                process_jobs[1].add_outputs(op_file)
-                processed_val_files.append(op_file)
+            process_jobs[1].add_outputs(op_file)
+            processed_val_files.append(op_file)
 
-            else:
-                f = File("test_{}".format(file.name))
-                rc.add_replica(site="local", lfn=f, pfn=file.resolve())
+        else:
+            f = File("test_{}".format(file.name))
+            rc.add_replica(site="local", lfn=f, pfn=file.resolve())
 
-                process_jobs[2].add_inputs(f)
-                op_file = File(f.lfn.replace(".png", "_norm.png"))
-                for m in mask_files:
-                    mname = m.lfn[0:-9]
-                    if file.name[0:-4] == mname:
-                        test_masks.append(m)
+            process_jobs[2].add_inputs(f)
+            op_file = File(f.lfn.replace(".png", "_norm.png"))
+            for m in mask_files:
+                mname = m.lfn[0:-9]
+                if file.name[0:-4] == mname:
+                    test_masks.append(m)
 
-                process_jobs[2].add_outputs(op_file)
-                log.info("preprocess_test adding input {}".format(f))
-                processed_test_files.append(op_file)
+            process_jobs[2].add_outputs(op_file)
+            log.info("preprocess_test adding input {}".format(f))
+            processed_test_files.append(op_file)
 
         i += 1
 
