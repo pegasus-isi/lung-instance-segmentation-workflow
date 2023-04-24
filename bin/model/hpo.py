@@ -28,14 +28,24 @@ def parse_args(args):
                 default=os.getcwd(),
                 help="directory where input files will be read from"
             )
-
+    parser.add_argument(
+                "-s",
+                "--storage_path",
+                type=str,
+                default="",
+                help="Storage location db"
+            )
     parser.add_argument(
                 "-o",
                 "--output_dir",
                 default=os.getcwd(),
                 help="directory where output files will be written to"
             )
-
+    parser.add_argument(
+                "--results_file",
+                default="study_result.txt",
+                help="Study result output file"
+            )
     parser.add_argument('--epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
     parser.add_argument('--fig_sizex',  metavar='fig_sizex', type=int, default = 8.5, help = "Analysis graph's size x")
@@ -103,7 +113,7 @@ def hpo_monitor(study, trial):
 
 
 
-def create_study(abs_folder_path, write_path, result_path):
+def create_study(abs_folder_path, write_path, result_path, storage_path):
     """
     This function creates study object which contains data from each epoch, with different hyperparameters, of the training.
     :parameter checkpoint_file: File
@@ -121,8 +131,13 @@ def create_study(abs_folder_path, write_path, result_path):
             get_best_params(best_trial, result_path, unet.args.output_dir)
         else:
             print("This study is finished. Nothing to do.")
+
     except Exception as e:
-        STUDY = optuna.create_study(direction = 'minimize', study_name='Lung Segmentation')
+        if storage_path=='':
+            STUDY = optuna.create_study(direction = 'minimize', study_name='Lung Segmentation')
+        else:
+            STUDY = optuna.create_study(direction = 'minimize',storage=storage_path, load_if_exists=True, study_name='Lung Segmentation')
+        
         STUDY.optimize(tune_unet, n_trials= unet.N_TRIALS,  callbacks=[hpo_monitor])
         best_trial = STUDY.best_trial
         get_best_params(best_trial, result_path, unet.args.output_dir)
@@ -130,12 +145,12 @@ def create_study(abs_folder_path, write_path, result_path):
 
 if __name__=="__main__":
     global unet
-    unet = UNet(parse_args(sys.argv[1:]))
+    args = parse_args(sys.argv[1:])
+    unet = UNet(args)
     unet.DataLoader()
-
     hpo_checkpoint = os.path.join(unet.args.output_dir, "study_checkpoint.pkl")
     hpo_checkpoint_tmp = os.path.join(unet.args.output_dir, "study_checkpoint_tmp.pkl")
-    hpo_results = "study_results.txt"
-    
-    create_study(hpo_checkpoint, hpo_checkpoint_tmp, hpo_results)
+    hpo_results=args.results_file
+    storage=args.storage_path
+    create_study(hpo_checkpoint, hpo_checkpoint_tmp, hpo_results, storage)
 

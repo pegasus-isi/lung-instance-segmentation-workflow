@@ -26,6 +26,11 @@ def parse_args(args):
             )
 
     parser.add_argument(
+                "--results_file",
+                default="study_result.txt",
+                help="Study result output file"
+            )
+    parser.add_argument(
                 "-o",
                 "--output_dir",
                 default=os.getcwd(),
@@ -42,9 +47,10 @@ def parse_args(args):
 
 
 if __name__ == "__main__":
-  unet = UNet(parse_args(sys.argv[1:]))
+  args = parse_args(sys.argv[1:])
+  unet = UNet(args)
   config = {}
-  with open(os.path.join(unet.args.output_dir, 'study_results.txt'), 'r') as f:
+  with open(os.path.join(unet.args.output_dir, args.results_file), 'r') as f:
     config = eval(f.read())['params']
 
   BACKBONE = 'seresnet34'
