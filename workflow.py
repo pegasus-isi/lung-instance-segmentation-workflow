@@ -246,13 +246,13 @@ def run_workflow(args):
 	                )	
     else: 
         unet_wf_preprocess_cont = Container(	
-	                    "unet_wf_model",	
+	                    "unet_wf_pre",	
 	                    Container.SINGULARITY,	
                             image="docker:///aditi1208/lung-segmentation-preprocess:latest",
                             image_site="docker_hub"
 	                )
         unet_wf_cont = Container(	
-	                    "unet_wf_pre",	
+	                    "unet_wf_model",	
 	                    Container.SINGULARITY,	
                             image="docker:///papajim/lung-segmentation-model:latest",
                             image_site="docker_hub"
