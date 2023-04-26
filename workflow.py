@@ -380,7 +380,7 @@ def run_workflow(args):
     model = File("model.h5")
     utils_file = File("utils.py")
     train_job = Job(train_model)\
-                    .add_args("--results_file", study_result_list[0])\
+                    .add_args("--params_file", study_result_list[0])\
                     .add_inputs(study_result_list[0], *processed_training_files, *processed_val_files, *training_masks, *val_masks, unet_file, utils_file)\
                     .add_outputs(model)
 
