@@ -426,7 +426,7 @@ if __name__ == "__main__":
         log.warning("Number of hpo jobs must be > 0. Setting number of hpo jobs to 1.")
         args.hpo_jobs = 1
     elif args.hpo_jobs > 1 and args.hpo_storage == "":
-        log.error("For more than 1 hpo jobs the --storage option needs to be set.")
+        log.error("For more than 1 hpo jobs the --hpo-storage option needs to be set.")
         exit(1)
 
     run_workflow(args)
