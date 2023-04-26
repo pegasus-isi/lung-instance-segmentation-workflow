@@ -33,7 +33,7 @@ def parse_args(args):
                 "--storage_path",
                 type=str,
                 default="",
-                help="Storage location db"
+                help="Storage location for parallel hpo jobs. Ex: mysql://username:pass@hostname/db"
             )
     parser.add_argument(
                 "-o",
@@ -42,9 +42,10 @@ def parse_args(args):
                 help="directory where output files will be written to"
             )
     parser.add_argument(
+                "-r",
                 "--results_file",
-                default="study_result.txt",
-                help="Study result output file"
+                default="study_results.txt",
+                help="Study results output file"
             )
     parser.add_argument('--epochs',  metavar='num_epochs', type=int, default = 30, help = "Number of training epochs")
     parser.add_argument('--batch_size',  metavar='batch_size', type=int, default = 32, help = "Batch Size")
@@ -134,9 +135,9 @@ def create_study(abs_folder_path, write_path, result_path, storage_path):
 
     except Exception as e:
         if storage_path=='':
-            STUDY = optuna.create_study(direction = 'minimize', study_name='Lung Segmentation')
+            STUDY = optuna.create_study(direction='minimize', study_name='Lung Segmentation')
         else:
-            STUDY = optuna.create_study(direction = 'minimize',storage=storage_path, load_if_exists=True, study_name='Lung Segmentation')
+            STUDY = optuna.create_study(direction='minimize', storage=storage_path, load_if_exists=True, study_name='Lung Segmentation')
         
         STUDY.optimize(tune_unet, n_trials= unet.N_TRIALS,  callbacks=[hpo_monitor])
         best_trial = STUDY.best_trial

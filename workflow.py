@@ -30,23 +30,27 @@ parser.add_argument(
     help="Path to directory containing lung mask images for training and validation"
 )
 parser.add_argument(
-    "--NUM-OF-HPO-JOBS",
-    type=int,
-    default=1,
-    help="Number of HPO Jobs you want to start simultaneously"
-)
-parser.add_argument(
     "--num-inputs",
     type=int,
     default=-1,
     help="Number of files to use as input (-1) to use the complete dataset"
 )
 parser.add_argument(
-    "-s",
-    "--storage",
+    "--hpo-jobs",
+    type=int,
+    default=1,
+    help="Number of HPO Jobs you want to start simultaneously"
+)
+parser.add_argument(
+    "--hpo-storage",
     type=str,
     default="",
-    help="Storage location db"
+    help="Storage location for parallel hpo jobs. Ex: mysql://username:pass@hostname/db"
+)
+parser.add_argument(
+    "--gpus",
+    action='store_true',
+    help="Flag to request gpus on ML jobs"
 )
 parser.add_argument(
     "--donut",
@@ -244,15 +248,15 @@ def run_workflow(args):
         unet_wf_cont = Container(	
 	                    "unet_wf_pre",	
 	                    Container.SINGULARITY,	
-                            image="file:///home/poseidon/workflows/lung-instance-segmentation-workflow/bin/containers/lung-segmentation-model.sif",
-                            image_site="local"
+                            image="docker:///aditi1208/lung-segmentation-preprocess:latest",
+                            image_site="docker_hub"
 	                )
         
         unet_wf_preprocess_cont = Container(	
 	                    "unet_wf_model",	
 	                    Container.SINGULARITY,	
-                            image="file:///home/poseidon/workflows/lung-instance-segmentation-workflow/bin/containers/lung-segmentation-preprocess.sif",
-                            image_site="local"
+                            image="docker:///papajim/lung-segmentation-model:latest",
+                            image_site="docker_hub"
 	                )
 
     tc.add_containers(unet_wf_cont, unet_wf_preprocess_cont)
@@ -287,7 +291,8 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=4, runtime=14400)
+                ).add_pegasus_profile(cores=8, runtime=14400)
+
 
     train_model = Transformation( 
                     "train_model",
@@ -295,7 +300,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=4, runtime=7200)
+                ).add_pegasus_profile(cores=8, runtime=7200)
 
     predict_masks = Transformation( 
                     "predict_masks",
@@ -303,7 +308,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=4, runtime=3600)
+                ).add_pegasus_profile(cores=8, runtime=3600)
 
     evaluate_model = Transformation( 
                     "evaluate",
@@ -312,6 +317,11 @@ def run_workflow(args):
                     is_stageable=True,
                     container=unet_wf_cont
                 )
+    
+    if args.gpus:
+        hpo_task.add_pegasus_profile(gpus=1)
+        train_model.add_pegasus_profile(gpus=1)
+        predict_masks.add_pegasus_profile(gpus=1)
 
     tc.add_transformations(preprocess, hpo_task, train_model, predict_masks, evaluate_model, unet, utils)
 
@@ -345,15 +355,15 @@ def run_workflow(args):
     hpo_checkpoint_result = File(f"study_checkpoint.pkl")
     study_result_list = []
     unet_file = File("unet.py")
-    if NUM_OF_HPO_JOBS>1:
-        if storage_path=='':
-            print("Please give storage path")
+    if args.hpo_jobs > 1:
+        if args.storage_path=='':
+            print("For more than 1 HPO jobs --storage option is mandatory")
             return
-        for i in range(1,NUM_OF_HPO_JOBS+1):
+        for i in range(1,args.hpo_jobs+1):
             study_result = File(f"study_result_{i}.txt")
             study_result_list.append(study_result)
             hpo_job = Job(hpo_task)\
-                    .add_args("--results_file", study_result, "--storage_path", storage_path)\
+                    .add_args("--results_file", study_result, "--storage_path", args.storage_path)\
                     .add_inputs(*processed_training_files, *processed_val_files, *training_masks, *val_masks, unet_file)\
                     .add_outputs(study_result)\
                     .add_checkpoint(hpo_checkpoint_result)
@@ -361,7 +371,9 @@ def run_workflow(args):
     else :
         print("Previous code")
         study_result = File("study_results.txt")
+        study_result_list.append(study_result)
         hpo_job = Job(hpo_task)\
+                    .add_args("--results_file", study_result)\
                     .add_inputs(*processed_training_files, *processed_val_files, *training_masks, *val_masks, unet_file)\
                     .add_outputs(study_result)\
                     .add_checkpoint(hpo_checkpoint_result)
@@ -409,11 +421,8 @@ def run_workflow(args):
 if __name__ == "__main__":
     global LUNG_IMG_DIR
     global LUNG_MASK_IMG_DIR
-    global NUM_OF_HPO_JOBS
     args = parser.parse_args(sys.argv[1:])
 
     LUNG_IMG_DIR = Path(args.lung_img_dir)
     LUNG_MASK_IMG_DIR = Path(args.lung_mask_img_dir)
-    NUM_OF_HPO_JOBS = args.NUM_OF_HPO_JOBS
-    storage_path = args.storage
     run_workflow(args)

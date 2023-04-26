@@ -24,17 +24,17 @@ def parse_args(args):
                 default=os.getcwd(),
                 help="directory where input files will be read from"
             )
-
-    parser.add_argument(
-                "--results_file",
-                default="study_result.txt",
-                help="Study result output file"
-            )
     parser.add_argument(
                 "-o",
                 "--output_dir",
                 default=os.getcwd(),
                 help="directory where output files will be written to"
+            )
+    parser.add_argument(
+                "-p",
+                "--params_file",
+                default="study_results.txt",
+                help="Training params"
             )
     
     parser.add_argument('--epochs',  metavar='num_epochs', type=int, default = 40, help = "Number of training epochs")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
   args = parse_args(sys.argv[1:])
   unet = UNet(args)
   config = {}
-  with open(os.path.join(unet.args.output_dir, args.results_file), 'r') as f:
+  with open(os.path.join(args.input_dir, args.params_file), 'r') as f:
     config = eval(f.read())['params']
 
   BACKBONE = 'seresnet34'
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
   # model.save(w_path)
 
-  pdf_path = os.path.join(unet.args.output_dir, 'Analysis.pdf')
+  pdf_path = os.path.join(args.output_dir, 'Analysis.pdf')
 
   #generate analysis results
   pdf = GeneratePDF()
