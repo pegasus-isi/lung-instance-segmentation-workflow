@@ -356,9 +356,6 @@ def run_workflow(args):
     study_result_list = []
     unet_file = File("unet.py")
     if args.hpo_jobs > 1:
-        if args.hpo_storage == '':
-            print("For more than 1 HPO jobs --storage option is mandatory")
-            return
         for i in range(1,args.hpo_jobs+1):
             study_result = File(f"study_result_{i}.txt")
             study_result_list.append(study_result)
@@ -369,7 +366,6 @@ def run_workflow(args):
                     .add_checkpoint(hpo_checkpoint_result)
             wf.add_jobs(hpo_job)
     else :
-        print("Previous code")
         study_result = File("study_results.txt")
         study_result_list.append(study_result)
         hpo_job = Job(hpo_task)\
@@ -425,4 +421,12 @@ if __name__ == "__main__":
 
     LUNG_IMG_DIR = Path(args.lung_img_dir)
     LUNG_MASK_IMG_DIR = Path(args.lung_mask_img_dir)
+    
+    if args.hpo_jobs < 1:
+        log.warning("Number of hpo jobs must be > 0. Setting number of hpo jobs to 1.")
+        args.hpo_jobs = 1
+    elif args.hpo_jobs > 1 and args.hpo_storage == "":
+        log.error("For more than 1 hpo jobs the --storage option needs to be set.")
+        exit(1)
+
     run_workflow(args)
