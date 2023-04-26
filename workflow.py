@@ -356,14 +356,14 @@ def run_workflow(args):
     study_result_list = []
     unet_file = File("unet.py")
     if args.hpo_jobs > 1:
-        if args.storage_path=='':
+        if args.hpo_storage == '':
             print("For more than 1 HPO jobs --storage option is mandatory")
             return
         for i in range(1,args.hpo_jobs+1):
             study_result = File(f"study_result_{i}.txt")
             study_result_list.append(study_result)
             hpo_job = Job(hpo_task)\
-                    .add_args("--results_file", study_result, "--storage_path", args.storage_path)\
+                    .add_args("--results_file", study_result, "--storage_path", args.hpo_storage)\
                     .add_inputs(*processed_training_files, *processed_val_files, *training_masks, *val_masks, unet_file)\
                     .add_outputs(study_result)\
                     .add_checkpoint(hpo_checkpoint_result)
