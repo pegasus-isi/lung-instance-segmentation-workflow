@@ -1,7 +1,7 @@
 FROM opensciencegrid/tensorflow-gpu:2.3-cuda-10.1
 WORKDIR /usr/bin
 RUN apt-get update && \
-    apt-get install -y software-properties-common wget curl openssh-client && \
+    apt-get install -y software-properties-common wget curl openssh-client mysql-client && \
     add-apt-repository ppa:deadsnakes/ppa
 RUN apt update && \
     apt install -y \
@@ -25,5 +25,6 @@ RUN pip3 install \
     tabulate  \
     matplotlib \
     reportlab  \
-    joblib
+    joblib \
+    mysql-connector-python
 ENV LANG C.UTF-8
