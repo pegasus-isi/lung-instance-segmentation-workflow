@@ -231,7 +231,7 @@ def run_workflow(args):
                         "unet_wf_pre",	
 	                    Container.SINGULARITY,	
 	                    image=str(Path(".").parent.resolve() / "lungseg_pre.sif"),	
-	                    #image="docker:///papajim/lung-segmentation:latest",	
+	                    #image="docker://papajim/lung-segmentation:latest",	
 	                    image_site="local",	
 	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
 	                )
@@ -240,7 +240,7 @@ def run_workflow(args):
                         "unet_wf_model",
 	                    Container.SINGULARITY,	
 	                    image=str(Path(".").parent.resolve() / "lungseg_model.sif"),	
-	                    #image="docker:///papajim/lung-segmentation:latest",	
+	                    #image="docker://papajim/lung-segmentation:latest",	
 	                    image_site="local",	
 	                    mounts=["${DONUT_USER_HOME}:${DONUT_USER_HOME}"]	
 	                )	
@@ -248,13 +248,13 @@ def run_workflow(args):
         unet_wf_preprocess_cont = Container(	
 	                    "unet_wf_pre",	
 	                    Container.SINGULARITY,	
-                            image="docker:///aditi1208/lung-segmentation-preprocess:latest",
+                            image="docker://aditi1208/lung-segmentation-preprocess:latest",
                             image_site="docker_hub"
 	                )
         unet_wf_cont = Container(	
 	                    "unet_wf_model",	
 	                    Container.SINGULARITY,	
-                            image="docker:///papajim/lung-segmentation-model:latest",
+                            image="docker://papajim/lung-segmentation-model:latest",
                             image_site="docker_hub"
 	                )
 
