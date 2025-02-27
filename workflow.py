@@ -266,7 +266,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/preprocess/preprocess.py",
                     is_stageable=True,
                     container=unet_wf_preprocess_cont
-                )
+                ).add_pegasus_profile(cores=8, memory="12 GB", runtime=14400)
 
     unet = Transformation(
                     "unet",
@@ -290,7 +290,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/hpo.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, runtime=14400)
+                ).add_pegasus_profile(cores=8, memory="12 GB", runtime=14400)
 
 
     train_model = Transformation( 
@@ -299,7 +299,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/train_model.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, runtime=7200)
+                ).add_pegasus_profile(cores=8, memory="24 GB", runtime=14400)
 
     predict_masks = Transformation( 
                     "predict_masks",
@@ -307,7 +307,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/prediction.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                ).add_pegasus_profile(cores=8, runtime=3600)
+                ).add_pegasus_profile(cores=8, memory="12 GB", runtime=14400)
 
     evaluate_model = Transformation( 
                     "evaluate",
@@ -315,7 +315,7 @@ def run_workflow(args):
                     pfn=top_dir / "bin/model/evaluate.py",
                     is_stageable=True,
                     container=unet_wf_cont
-                )
+                ).add_pegasus_profile(cores=8, memory="12 GB", runtime=14400)
     
     if args.gpus:
         hpo_task.add_pegasus_profile(gpus=1)
